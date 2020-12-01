@@ -1,0 +1,1019 @@
+SQL> drop table hr.emp;
+SQL> drop table hr.dept;
+SQL> create table hr.emp as select * from hr.employees;
+SQL> create table hr.dept as select * from hr.departments;
+
+SQL> select employee_id,last_name,department_name 
+  2  from hr.emp ,hr.departments
+  3  where hr.emp.department_id=hr.departments.department_id and hr.emp.employee_id=100;
+
+EMPLOYEE_ID LAST_NAME                      DEPARTMENT_NAME
+----------- ------------------------------ ------------------------------
+        100 King                           Executive
+
+SQL> declare
+  2   v_empid hr.emp.employee_id%TYPE;
+  3   v_lname hr.emp.last_name%TYPE;
+  4   v_dname hr.dept.department_name%TYPE;
+  5  begin
+  6   select employee_id,last_name,department_name into v_empid,v_lname,v_dname
+  7    from hr.emp,hr.dept
+  8    where hr.emp.department_id=hr.dept.department_id and hr.emp.employee_id=100;
+  9   dbms_output.put_line(v_empid||':'||v_lname||':'||v_dname);
+ 10  end;
+ 11  /
+100:King:Executive
+
+Scalar Data type->最小單元,沒有包含其他資料型態在此種資料型態裡.
+--上面的PL/SQL Block裡v_empid,v_lname,v_dname彼此間沒有任何關連(成對:pairwise)
+--雖然這些變數值來源有一定的關聯(同一筆row的不同欄位值)
+
+PL/SQL Record是一種複合資料形態(Composite data type),可以有多個fields組成,每個field可以有不同的data type.
+一個PL/SQL Record變數,同時只能儲存一筆紀錄,但該紀錄可以有多個field組成.
+但每個field只能放一個值,可以讓fields間有一定的關聯
+
+type可以宣告在PL/SQL宣告區,也可以事先建立在Database Level
+
+SQL> DECLARE
+  2   TYPE type_emp_dept IS RECORD   --資料型態emp_dept_type僅存在於此PL/SQL Block執行過程.IS RECORD宣告此type為PL/SQL Record
+  3    (empid number,                --field定義(名字 型態(大小) := 初始值)
+  4     lname varchar2(30),
+  5     dname varchar2(30));         --所以type_emp_dept有三個field
+  6   rec_emp_dept type_emp_dept;    --宣告變數為PL/SQL Record資料型態.此時該PL/SQL Record的每個field值都為空值.
+  7  BEGIN
+  8  select employee_id,last_name,department_name into rec_emp_dept
+  9   from hr.emp,hr.departments
+ 10   where hr.emp.department_id=hr.departments.department_id and hr.emp.employee_id=100;
+ 11   dbms_output.put_line(rec_emp_dept.empid||':'||rec_emp_dept.lname||':'||rec_emp_dept.dname);
+ 12  END;
+ 13  /
+100:King:Executive
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   type emp_rec_type is record
+  3    (employee_id number(6),first_name varchar2(20),last_name varchar2(30),email varchar2(25),phone_number varchar2(20),hire_date date,job_id varchar2(10),salary number(8,2),commission_pct number(2,2),manager_id number(6),department_id number(4));
+  4   emp_rec emp_rec_type;
+  5  begin
+  6   select employee_id,first_name,last_name,email,phone_number,hire_date,job_id,salary,commission_pct,manager_id,department_id into emp_rec
+  7    from hr.emp
+  8    where employee_id=100;
+  9   dbms_output.put_line(emp_rec.last_name||':'||emp_rec.salary);
+ 10  end;
+ 11  /
+King:24000
+
+已順利完成 PL/SQL 程序.
+
+--可以使用%TYPE方式,宣告field type
+declare
+ TYPE emp_rec_type IS RECORD
+ (employee_id hr.emp.employee_id%type,first_name hr.emp.first_name%type,last_name hr.emp.last_name%type,
+  email hr.emp.email%type,phone_number hr.emp.phone_number%type,hire_date hr.emp.hire_date%type,job_id hr.emp.job_id%type,salary hr.emp.salary%type,commission_pct hr.emp.commission_pct%type,manager_id hr.emp.manager_id%type,department_id hr.emp.department_id%type);
+ emp_rec emp_rec_type;
+begin
+ select employee_id,first_name,last_name,email,phone_number,hire_date,job_id,salary,commission_pct,manager_id,department_id into emp_rec
+ from hr.emp
+ where employee_id=100;
+ dbms_output.put_line(emp_rec.last_name||':'||emp_rec.salary);
+end;
+/
+
+SQL> desc hr.emp
+ 名稱                                      空值?    類型
+ ----------------------------------------- -------- ----------------------------
+ EMPLOYEE_ID                                        NUMBER(6)
+ FIRST_NAME                                         VARCHAR2(20)
+ LAST_NAME                                 NOT NULL VARCHAR2(25)
+ EMAIL                                     NOT NULL VARCHAR2(25)
+ PHONE_NUMBER                                       VARCHAR2(20)
+ HIRE_DATE                                 NOT NULL DATE
+ JOB_ID                                    NOT NULL VARCHAR2(10)
+ SALARY                                             NUMBER(8,2)
+ COMMISSION_PCT                                     NUMBER(2,2)
+ MANAGER_ID                                         NUMBER(6)
+ DEPARTMENT_ID                                      NUMBER(4)
+
+SQL> declare
+  2   rec_emp hr.emp%ROWTYPE;   --將複合資料型態宣告與變數宣告合為一體.%rowtype可以參考table/view/explicit cursor
+  3  begin                      --如果不是真的需要每個columns,建議不要使用此種方式,因為將需要較大的記憶體空間.
+  4   select * into rec_emp from hr.emp where employee_id=100;  --但是不建議使用SELECT *
+  5   dbms_output.put_line(rec_emp.employee_id||':'|rec_emp.last_name||':'||rec_emp.salary);
+  6  end;
+  7  /
+100:King:24000
+
+已順利完成 PL/SQL 程序.
+
+--個人建議,可以減少PL/SQL Record執行階段所消耗的記憶體.
+SQL> declare
+  2   TYPE emp_dept_type IS RECORD
+  3    (empid hr.emp.employee_id%type,
+  4     lname hr.emp.last_name%type,
+  5     dname hr.departments.department_name%type);
+  6   emp_dept_rec emp_dept_type;
+  7  begin
+  8   select employee_id,last_name,department_name into emp_dept_rec
+  9    from hr.emp,hr.departments
+ 10    where hr.emp.department_id=hr.departments.department_id and hr.emp.employee_id=100;
+ 11   dbms_output.put_line(emp_dept_rec.empid||':'||emp_dept_rec.lname||':'||emp_dept_rec.dname);
+ 12  end;
+ 13  /
+100:King:Executive
+
+已順利完成 PL/SQL 程序.
+
+SQL> create table hr.new_emp as select * from hr.employees where 1=2;
+
+已建立表格.
+
+SQL> select * from hr.new_emp;
+
+沒有任何資料列被選取
+
+SQL> select last_name,salary from hr.new_emp where employee_id=100;
+
+沒有任何資料列被選取
+
+SQL> declare
+  2   emp_rec hr.emp%rowtype;
+  3  begin
+  4   select * into emp_rec from hr.emp where employee_id=100;  --將employee_id=100這筆row內容填入emp_rec
+  5   emp_rec.salary := emp_rec.salary*1.1;     --變更emp_rec的salary field內容
+  5   insert into hr.new_emp values emp_rec;    --將emp_rec當作資料來源新增到hr.new_emp
+  6   commit;
+  7   select * into emp_rec from hr.new_emp where employee_id=emp_rec.employee_id;  --將剛剛新增的資料列內容填入emp_rec
+  8   dbms_output.put_line(emp_rec.last_name||':'||emp_rec.salary);   --顯示emp_rec的salary(變更後)
+  9  end;
+ 10  /
+King:26400
+
+已順利完成 PL/SQL 程序.
+\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+SQL> declare
+  2   emp_rec hr.emp%rowtype;
+  3   new_salary hr.new_emp.salary%type;
+  4  begin
+  5   select * into emp_rec from hr.emp where employee_id=100;
+  6   emp_rec.salary := emp_rec.salary*1.1;
+  7   insert into hr.new_emp values emp_rec
+  8    returning salary into new_salary;   --INSERT/UPDATE/DELETE操作時,可以使用returning將異動row的column value同時傳回
+  9   dbms_output.put_line('After Modify value :'||new_salary);
+ 10  end;
+ 11  /
+After Modify value :26400
+
+已順利完成 PL/SQL 程序.
+\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+SQL> select last_name,salary from hr.new_emp where employee_id=100;
+
+LAST_NAME                     SALARY
+------------------------- ----------
+King                           26400
+
+SQL> declare
+  2   emp_rec hr.emp%rowtype;
+  3  begin
+  4   select * into emp_rec from hr.emp where employee_id=100;
+  5   dbms_output.put_line(emp_rec.salary);
+  6   update hr.new_emp set ROW=emp_rec where employee_id=100;    --整筆row的所有欄位都依照emp_rec的fields變更.所產生的redo/undo量將比僅修改必要欄位來得多.
+  7   select * into emp_rec from hr.new_emp where employee_id=100;
+  8   dbms_output.put_line(emp_rec.salary);
+  9   commit;
+ 10  end;
+ 11  /
+24000  --hr.emp
+24000  --hr.new_emp
+
+已順利完成 PL/SQL 程序.
+SQL> create table t1(a number,b varchar2(10));
+
+已建立表格.
+
+SQL> insert into t1 values(1,'A');
+
+已建立 1 個資料列.
+
+SQL> insert into t1 values(2,'B');
+
+已建立 1 個資料列.
+
+SQL> commit;
+
+確認完成.
+
+SQL> select * from t1;
+
+         A B
+---------- ----------
+         1 A
+         2 B
+
+SQL> declare
+  2   t1_rec hr.t1%rowtype;
+  3  begin
+  4   select * into t1_rec from hr.t1 where a=1;
+  5   dbms_output.put_line(t1_rec.a||':'||t1_rec.b);
+  6   t1_rec.b := 'A1';
+  --等同: update t1 set a=t1_rec.a,b=t1_rec.b where a=t1_rec.a
+  7   update t1 set row=t1_rec where a=t1_rec.a;
+  8   commit;
+  9   select * into t1_rec from hr.t1 where a=1;  --請考慮改為update returning方式
+ 10   dbms_output.put_line(t1_rec.a||':'||t1_rec.b);
+ 11  end;
+ 12  /
+1:A
+1:A1
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   t1_rec hr.t1%rowtype;
+  3  begin
+  4   t1_rec.a := 3;
+  5   t1_rec.b := 'C';
+  6   dbms_output.put_line(t1_rec.a||':'||t1_rec.b);
+  7   insert into hr.t1 values t1_rec;
+  8   commit;
+  9   select * into t1_rec from hr.t1 where a=3;
+ 10   dbms_output.put_line(t1_rec.a||':'||t1_rec.b);
+ 11  end;
+ 12  /
+3:C
+3:C
+
+已順利完成 PL/SQL 程序.
+
+--Associative Array
+SQL> DECLARE
+  2   TYPE table_type1 IS TABLE OF
+  3    varchar2(30)
+  4    INDEX BY PLS_INTEGER;
+  5   index_by_table1 table_type1;
+  6   v1 NUMBER := 1;
+  7  BEGIN
+  8   index_by_table1(100) := 'Frank';
+  9   index_by_table1(10) := 'Scott';
+ 10   index_by_table1(1) := 'Green';
+ 11   index_by_table1(1000) := 'Tom';
+ 12   index_by_table1(10000) := 'Adam';
+ 13   dbms_output.put_line(index_by_table1.first);
+ 14   dbms_output.put_line(index_by_table1.last);
+ 15  END;
+ 16  /
+1            --first->last以key順序
+10000
+
+已順利完成 PL/SQL 程序.
+
+DECLARE
+ TYPE table_type1 IS TABLE OF
+  varchar2(30)
+  INDEX BY PLS_INTEGER;
+ index_by_table1 table_type1;
+ v1 NUMBER := 1;
+ start_index NUMBER;
+ end_index NUMBER;
+BEGIN
+ index_by_table1(100) := 'Frank';
+ index_by_table1(10) := 'Scott';
+ index_by_table1(1) := 'Green';
+ index_by_table1(1000) := 'Tom';
+ index_by_table1(10000) := 'Adam';
+ start_index := index_by_table1.first;
+ end_index := index_by_table1.last;
+ FOR i IN start_index .. end_index LOOP
+  dbms_output.put_line(i);
+ END LOOP;
+END;
+/
+
+1
+2
+3
+4
+....
+....
+9996
+9997
+9998
+9999
+10000
+
+已順利完成 PL/SQL 程序.
+
+  2   TYPE table_type1 IS TABLE OF
+  3    varchar2(30)
+  4    INDEX BY PLS_INTEGER;
+  5   index_by_table1 table_type1;
+  6   v1 NUMBER := 1;
+  7   start_index NUMBER;
+  8   end_index NUMBER;
+  9  BEGIN
+ 10   index_by_table1(100) := 'Frank';
+ 11   index_by_table1(10) := 'Scott';
+ 12   index_by_table1(1) := 'Green';
+ 13   index_by_table1(1000) := 'Tom';
+ 14   index_by_table1(10000) := 'Adam';
+ 15   start_index := index_by_table1.first;
+ 16   end_index := index_by_table1.last;
+ 17   FOR i IN start_index .. end_index LOOP
+ 18    NULL;
+ 19   END LOOP;
+ 20   dbms_output.put_line(index_by_table1(200));
+ 21  END;
+ 22  /
+DECLARE
+*
+ ERROR 在行 1:
+ORA-01403: 找不到資料
+ORA-06512: 在 line 20  --index_by_table1(200)
+
+DECLARE
+ TYPE table_type1 IS TABLE OF
+  varchar2(30)
+  INDEX BY PLS_INTEGER;
+ index_by_table1 table_type1;
+ v1 NUMBER := 1;
+BEGIN
+ index_by_table1(100) := 'Frank';
+ index_by_table1(10) := 'Scott';
+ index_by_table1(1) := 'Green';
+ index_by_table1(1000) := 'Tom';
+ index_by_table1(10000) := 'Adam';
+ FOR i in index_by_table1.FIRST .. index_by_table1.LAST LOOP
+  BEGIN
+   dbms_output.put_line(index_by_table1(i));
+  EXCEPTION
+   WHEN OTHERS THEN NULL;
+  END;
+  v1 := v1 + 1;
+ END LOOP;
+ DBMS_OUTPUT.PUT_LINE(v1);
+END;
+
+--也可以將EXCEPTION改為IF判斷式
+ IF index_by_table1.EXISTS(i) THEN
+  dbms_output.put_line(index_by_table1(i));
+ END IF;
+
+SQL>  DECLARE
+  2   TYPE table_type1 IS TABLE OF     --宣告一個Associative array TYPE
+  3    varchar2(30)                    --唯一的field的資料型態
+  4    INDEX BY PLS_INTEGER;           --Associative array必須使用Index尋找相對資料(位在assocative array)
+  5   index_by_table1 table_type1;
+  6   v1 NUMBER := 1;
+  7  BEGIN
+  8   index_by_table1(100) := 'Frank';        --100為index key
+  9   index_by_table1(10) := 'Scott';         --10為index key
+ 10   index_by_table1(1) := 'Green';
+ 11   index_by_table1(1000) := 'Tom';
+ 12   index_by_table1(10000) := 'Adam';
+                               1     .. 10000
+ 13   FOR i in index_by_table1.FIRST .. index_by_table1.LAST LOOP
+ 14  --  BEGIN
+ 15     dbms_output.put_line(index_by_table1(i));
+ 16  --  EXCEPTION
+ 17  --   WHEN OTHERS THEN NULL;
+ 18  --  END;
+ 19    v1 := v1 + 1;
+ 20   END LOOP;
+ 21   DBMS_OUTPUT.PUT_LINE(v1);
+ 22  END;
+ 23  /
+Green  --index_by_table1(1)
+DECLARE
+*
+ ERROR 在行 1:
+ORA-01403: 找不到資料  --> index_by_table1(2)
+ORA-06512: 在 line 15 
+
+SQL> DECLARE
+  2   TYPE table_type1 IS TABLE OF
+  3    varchar2(30)
+  4    INDEX BY PLS_INTEGER;    --最終儲存位置,將依照index by值排序,因為將在其上建立index
+  5   index_by_table1 table_type1;
+----------------------------------------
+Key    | Field                         |
+----------------------------------------
+  6  BEGIN
+  7   index_by_table1(100) := 'Frank';
+----------------------------------------
+Key    | Field                         |
+----------------------------------------
+100    | Frank                         |
+----------------------------------------
+  8   index_by_table1(10) := 'Scott';
+----------------------------------------
+Key    | Field                         |
+----------------------------------------
+10     | Scott                         |
+----------------------------------------
+100    | Frank                         |
+----------------------------------------
+  9   index_by_table1(1) := 'Green';
+----------------------------------------
+Key    | Field                         |
+----------------------------------------
+1      | Green                         |
+----------------------------------------
+10     | Scott                         |
+----------------------------------------
+100    | Frank                         |
+----------------------------------------
+  10   index_by_table1(1000) := 'Tom';
+----------------------------------------
+Key    | Field                         |
+----------------------------------------
+1      | Green                         |
+----------------------------------------
+10     | Scott                         |
+----------------------------------------
+100    | Frank                         |
+----------------------------------------
+1000   | Tom                           |
+----------------------------------------
+  11   index_by_table1(10000) := 'Adam';
+----------------------------------------
+Key    | Field                         |
+----------------------------------------
+1      | Green                         |
+----------------------------------------
+10     | Scott                         |
+----------------------------------------
+100    | Frank                         |
+----------------------------------------
+1000   | Tom                           |
+----------------------------------------
+10000  | Adam                          |
+----------------------------------------
+ 12   FOR i in index_by_table1.FIRST .. index_by_table1.LAST LOOP
+ 13    BEGIN
+ 14     dbms_output.put_line(index_by_table1(i));
+ 15    EXCEPTION
+ 16     WHEN OTHERS THEN NULL;
+ 17    END;
+ 18   END LOOP;
+ 19 END;
+ 20 /
+Green
+SCott
+Frank
+Tome
+Adam
+
+--此方法將造成FOR LOOP由1..10000,共執行10001次
+已順利完成 PL/SQL 程序.
+
+--也可以將line 13到line 17改為
+IF index_by_table1.EXISTS(i) 
+ THEN
+  dbms_output.put_line(index_by_table1(i));
+END IF;
+
+
+--請改用collection methods: NEXT
+  1  DECLARE
+  2   TYPE table_type1 IS TABLE OF
+  3    varchar2(30)
+  4    INDEX BY PLS_INTEGER;
+  5   index_by_table1 table_type1;
+  6   v1 NUMBER ;
+  7   v2 NUMBER := 1;
+  8  BEGIN
+  9   index_by_table1(100) := 'Frank';
+ 10   index_by_table1(10) := 'Scott';
+ 11   index_by_table1(1) := 'Green';
+ 12   index_by_table1(1000) := 'Tom';
+ 13   index_by_table1(10000) := 'Adam';
+ 14  -- FOR i in index_by_table1.FIRST .. index_by_table1.LAST LOOP
+ 15   v1 := index_by_table1.FIRST;
+ 16   WHILE index_by_table1.EXISTS(v1) LOOP
+ 17    DBMS_OUTPUT.PUT_LINE('Index By TABLE ''s subscript :'||v1);
+ 18    DBMS_OUTPUT.PUT_LINE(index_by_table1(v1));
+ 19    v1 := index_by_table1.NEXT(v1);
+ 20    v2 := v2 + 1;
+ 21   END LOOP;
+ 22   DBMS_OUTPUT.PUT_LINE(v2);
+ 23  END;
+ 24  /
+Index By TABLE 's subscript :1
+Green
+Index By TABLE 's subscript :10
+Scott
+Index By TABLE 's subscript :100
+Frank
+Index By TABLE 's subscript :1000
+Tom
+Index By TABLE 's subscript :10000
+Adam
+6  --此方式只需要進行與index by table elemenet數相同次數即可
+
+已順利完成 PL/SQL 程序.
+
+SQL> DECLARE
+  2   TYPE table_type1 IS TABLE OF
+  3    varchar2(30)
+  4    INDEX BY PLS_INTEGER;
+  5   index_by_table1 table_type1;
+  6   v1 NUMBER := 1;
+  7  BEGIN
+  8   index_by_table1(100) := 'Frank';
+  9   index_by_table1(10) := 'Scott';
+ 10   index_by_table1(1) := 'Green';
+ 11   index_by_table1(1000) := 'Tom';
+ 12   index_by_table1(10000) := 'Adam';
+ 13   v1 := index_by_table1.FIRST;
+ 14   FOR i IN 1 .. index_by_table1.COUNT LOOP
+ 15     dbms_output.put_line(index_by_table1(v1));
+ 16     v1 := index_by_table1.NEXT(v1);
+ 17   END LOOP;
+ 18  END;
+ 19  /
+Green
+Scott
+Frank
+Tom
+Adam
+
+已順利完成 PL/SQL 程序.
+
+
+SQL> declare
+  2   TYPE ename_table_type IS TABLE OF  --PL/SQL Table type的名字
+  3    hr.emp.last_name%type    --field定義,注意associative array只能有一個field,所以不用指定field name
+  4    INDEX BY PLS_INTEGER;    --索引方式為pls_integer,表示此type為Associate array.如果沒有此行,則變成nested table.
+  5   ename_table ename_table_type;   --宣告一個PL/SQL Table型態的變數:ename_table
+  6   ename_table_index number;
+  7  begin
+  8   ename_table_index := 1;
+  9   for i in 100..104 loop  --i從100,101,102,103,104
+ 10    select last_name into ename_table(ename_table_index) from hr.emp where employee_id=i;  --填入5組last_name值到ename_table裡
+ 11    ename_table_index := ename_table_index + 1;
+ 12   end loop;
+ ----------------------------------
+ key    |  last_name
+ ----------------------------------
+ 1      |  King   
+ ----------------------------------
+ 2      |  Kochhar   
+ ----------------------------------
+ 3      |  De Haan   
+ ----------------------------------
+ 4      |  Hunold   
+ ----------------------------------
+ 5      |  Ernst  
+ ----------------------------------
+ 13   for j in ename_table.FIRST..ename_table.LAST loop
+                    1                     5
+ 14    dbms_output.put_line(ename_table(j));  --讀取ename_table裡的field value,必須使用index key
+ 15   end loop;
+ 16  end;
+ 17  /
+King
+Kochhar
+De Haan
+Hunold
+Ernst
+
+--Line 9到Line 10將發生5次 PL/SQL Engine與SQL Engine的切換
+--可以使用forall,先執行SQL指令一次,將所有回傳的rows一次載入PL/SQL Table
+
+SQL> declare
+  2   TYPE emp_rec_type IS RECORD (last_name varchar2(30),salary number(8,2));
+  3   TYPE ename_table_type IS TABLE  OF
+  4    emp_rec_type   --field type為PL/SQL Record
+  5    INDEX BY PLS_INTEGER;
+  6   ename_table ename_table_type;
+  7  begin
+  8   for i in 100..104 loop
+  9    select last_name,salary into ename_table(i) from hr.emp where employee_id=i;
+ 10   end loop;
+ ----------------------------------
+ key    |  [last_name|salary]
+ ----------------------------------
+ 100    |  [King|24000]   
+ ----------------------------------
+ 101    |  [Kochhar|17000]   
+ ----------------------------------
+ 102    |  [De Haan|17000]   
+ ----------------------------------
+ 103    |  [Hunold|9000]   
+ ----------------------------------
+ 104    |  [Ernst|6000]  
+ ----------------------------------
+ 11   for i in ename_table.first..ename_table.last loop
+ 12    dbms_output.put_line(ename_table(i).last_name||':'||ename_table(i).salary);
+ 13   end loop;
+ 14  end;
+ 15  /
+King:24000
+Kochhar:17000
+De Haan:17000
+Hunold:9000
+Ernst:6000
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   type ename_table_type is table  of
+  3    hr.emp%rowtype
+  4    index by pls_integer;
+  5   ename_table ename_table_type;
+  6  begin
+  7   for i in 100..110 loop
+  8    select * into ename_table(i) from hr.emp where employee_id=i;
+  9   end loop;
+ 10   dbms_output.put_line('These are '||ename_table.COUNT||' records in ENAME_TABLE');
+ 11  end;
+ 12  /
+These are 11 records in ENAME_TABLE
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   type ename_table_type is table  of
+  3    hr.emp%rowtype
+  4    index by pls_integer;
+  5   ename_table ename_table_type;
+  6  begin
+  7   for i in 1..110 loop
+  8    select * into ename_table(i) from hr.emp where employee_id=i;
+  9   end loop;
+ 10   dbms_output.put_line('These are '||ename_table.COUNT||' records in ENAME_TABLE');
+ 11  end;
+ 12  /
+declare
+*
+ ERROR 在行 1:
+ORA-01403: 找不到資料
+ORA-06512: 在 line 8    --select * from hr.emp where employee_id=1沒有回傳任何資料(implicit cursor無法處理此種情況)
+
+PL/SQL裡Nested Table與Associative Arrary差別在Index By子句
+而且Nested Table/VArray可以宣告在Database Level,但Associated Array只能宣告在PL/SQL的宣告區塊裡
+同時Nested Table需要使用建構子,來初始化變數
+SQL> DECLARE
+  2     TYPE location_type IS TABLE OF locations.city%TYPE;   --沒有出現INDEX BY這個子句
+  3     offices location_type;   --offices為Nested table型態的變數
+  4     table_count NUMBER;
+  5  BEGIN                      --   1        2        3           4    nested table的key不能夠隨意指定.一定由1開始,遞增加1
+  6     offices := location_type('Bombay', 'Tokyo','Singapore','Oxford');  --使用建構子初始化offices變數,建構子名字與nested table type相同
+  7  FOR i in 1.. offices.count() LOOP
+  8       DBMS_OUTPUT.PUT_LINE(offices(i));  
+  9     END LOOP;
+ 10  END;
+ 11  /
+Bombay
+Tokyo
+Singapore
+Oxford
+
+已順利完成 PL/SQL 程序.
+
+  1  DECLARE
+  2     TYPE location_type IS TABLE OF locations.city%TYPE;
+  3     offices location_type;
+  4     table_count NUMBER;
+  5  BEGIN
+  6     offices := location_type('Bombay', 'Tokyo','Singapore','Oxford');
+  7     offices(5) := 'Taipei';            
+  8     FOR i in 1.. offices.count() LOOP
+  9       DBMS_OUTPUT.PUT_LINE(offices(i));
+ 10     END LOOP;
+ 11  END;
+ 12  /
+DECLARE
+*
+ ERROR 在行 1:
+ORA-06533: 子命令檔超出計數 --因為目前offices變數只有4個element,必須明確擴增element數量後,才能將值放入
+ORA-06512: 在 line 7
+
+
+SQL> DECLARE
+  2     TYPE location_type IS TABLE OF locations.city%TYPE;
+  3     offices location_type;
+  4     table_count NUMBER;
+  5  BEGIN
+  6     offices := location_type('Bombay', 'Tokyo','Singapore','Oxford');
+  7     offices.extend;            --增加一個element
+  8     offices(5) := 'Taipei';    --新增element的key,一定為offices.count()+1
+  9     FOR i in 1.. offices.count() LOOP
+ 10       DBMS_OUTPUT.PUT_LINE(offices(i));
+ 11     END LOOP;
+ 12   END;
+ 13   /
+Bombay
+Tokyo
+Singapore
+Oxford
+Taipei
+
+已順利完成 PL/SQL 程序.
+
+--VARRAY(Varing Array)
+SQL> DECLARE
+  2      TYPE location_type IS VARRAY(3) OF locations.city%TYPE;  --在於value數量必須事先限制
+  3      offices location_type;
+  4      table_count NUMBER;
+  5  BEGIN
+  6     offices := location_type('Bombay', 'Tokyo','Singapore','Oxford');  --將4組資料填入VARRAY裡
+  7     FOR i in 1.. offices.count() LOOP
+  8       DBMS_OUTPUT.PUT_LINE(offices(i));
+  9     END LOOP;
+ 10  END;
+ 11  /
+DECLARE
+*
+ ERROR 在行 1:
+ORA-06532: 子命令檔超出限制  
+ORA-06512: 在 line 1  --因為location_type為VARRAY(3)表示最多只能有3組資料
+
+SQL> DECLARE
+  2      TYPE location_type IS VARRAY(5) OF locations.city%TYPE;   --可以有5組資料
+  3      offices location_type;
+  4      table_count NUMBER;
+  5  BEGIN
+  6     offices := location_type('Bombay', 'Tokyo','Singapore','Oxford');  --填入4組資料
+  7     FOR i in 1.. offices.count() LOOP
+  8       DBMS_OUTPUT.PUT_LINE(offices(i));
+  9     END LOOP;
+ 10  END;
+ 11  /
+Bombay
+Tokyo
+Singapore
+Oxford
+
+已順利完成 PL/SQL 程序.
+
+SQL> DECLARE
+  2   TYPE location_type IS VARRAY(5) OF locations.city%TYPE;   --可以有5組資料
+  3   offices location_type;
+  4   table_count NUMBER;
+  5  BEGIN
+  6   offices := location_type('Bombay', 'Tokyo','Singapore','Oxford');  --填入4組資料
+  7   FOR i in 1.. offices.count() LOOP
+  8    DBMS_OUTPUT.PUT_LINE(offices(i));
+  9   END LOOP;
+ 10   offices(5) := 'Taipei';
+ 11   DBMS_OUTPUT.PUT_LINE(offices(5));
+ 12  END;
+ 13  /
+Bombay
+Tokyo
+Singapore
+Oxford
+DECLARE
+*
+ ERROR 在行 1:
+ORA-06533: 子命令檔超出計數  --因為目前offices(Varray只能使用4個空間,因為建構時只extend 4筆紀錄的空間)
+ORA-06512: 在 line 10
+
+SQL> DECLARE
+  2   TYPE location_type IS VARRAY(5) OF locations.city%TYPE;   --可以有5組資料
+  3   offices location_type;
+  4   table_count NUMBER;
+  5  BEGIN
+  6   offices := location_type('Bombay', 'Tokyo','Singapore','Oxford');  --填入4組資料
+  7   FOR i in 1.. offices.count() LOOP
+  8    DBMS_OUTPUT.PUT_LINE(offices(i));
+  9   END LOOP;
+ 10   offices.extend;   --必須先擴展空間
+ 11   offices(5) := 'Taipei';
+ 12   DBMS_OUTPUT.PUT_LINE(offices(5));
+ 13  END;
+ 14  /
+Bombay
+Tokyo
+Singapore
+Oxford
+Taipei
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   type ename_table_type is table of
+  3    hr.emp%rowtype
+  4    index by pls_integer;
+  5   ename_table ename_table_type;
+  6   v1 number := 1;
+  7  begin
+  8   for i in 100..110 loop
+  9    select * into ename_table(v1) from hr.emp where employee_id=i;
+ 10    dbms_output.put_line(v1);
+ 11    v1 := v1+2;
+ 12   end loop;
+ 13   dbms_output.put_line(ename_table(1).employee_id||':'||ename_table(1).last_name);
+ 14   dbms_output.put_line(ename_table(5).employee_id||':'||ename_table(5).last_name);
+ 15  end;
+ 16  /
+1
+3
+5
+7
+9
+11
+13
+15
+17
+19
+21
+100:King
+102:De Haan
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   type ename_table_type is table of
+  3    hr.emp%rowtype
+  4    index by pls_integer;
+  5   ename_table ename_table_type;
+  6   v1 number := 1;
+  7  begin
+  8   for i in 100..110 loop
+  9    select * into ename_table(v1) from hr.emp where employee_id=i;
+ 10    dbms_output.put_line(v1);
+ 11    v1 := v1+2;
+ 12   end loop;
+ 13   dbms_output.put_line(ename_table(2).employee_id||':'||ename_table(2).last_name);
+ 14   dbms_output.put_line(ename_table(9).employee_id||':'||ename_table(9).last_name);
+ 15  end;
+ 16  /
+1
+3
+5
+7
+9
+11
+13
+15
+17
+19
+21
+declare
+*
+ ERROR 在行 1:
+ORA-01403: 找不到資料  --ename_table(2)沒有相對的record存在
+ORA-06512: 在 line 13
+
+  2   type ename_table_type is table of
+  3    hr.emp%rowtype
+  4   index by pls_integer;
+  5   ename_table ename_table_type;
+  6   v1 number := 1;
+  7  begin
+  8   for i in 100..110 loop
+  9    select * into ename_table(v1) from hr.emp where employee_id=i;
+ 10    dbms_output.put_line(v1);
+ 11    v1 := v1+2;
+ 12   end loop;
+ 13   if (ename_table.exists(2))
+ 14    then
+ 15     dbms_output.put_line(ename_table(2).employee_id||':'||ename_table(2).last_name);
+ 16    else
+ 17     dbms_output.put_line('此index key並未對應到任何資料');
+ 18   end if;
+ 19  end;
+ 20  /
+1
+3
+5
+7
+9
+11
+13
+15
+17
+19
+21
+此index key並未對應到任何資料
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   type ename_table_type is table of
+  3    hr.emp%rowtype
+  4   index by varchar2(100);
+  5   ename_table ename_table_type;
+  6   v1 varchar2(100);
+  7  begin
+  8   v1 := 'Hello';
+  9   for i in 100..110 loop
+ 10    v1 := 'Hello'||i;
+ 11    select * into ename_table(v1) from hr.emp where employee_id=i;
+ 12    dbms_output.put_line(v1);
+ 13   end loop;
+ 14  end;
+ 15  /
+Hello100
+Hello101
+Hello102
+Hello103
+Hello104
+Hello105
+Hello106
+Hello107
+Hello108
+Hello109
+Hello110
+
+已順利完成 PL/SQL 程序.
+
+  2   type ename_table_type is table of
+  3    hr.emp%rowtype
+  4   index by varchar2(100);
+  5   ename_table ename_table_type;
+  6   v1 varchar2(100);
+  7  begin
+  8   v1 := 'Hello';
+  9   for i in 100..110 loop
+ 10    v1 := 'Hello'||i;
+ 11    select * into ename_table(v1) from hr.emp where employee_id=i;
+ 12    dbms_output.put_line(v1);
+ 13   end loop;
+ 14   dbms_output.put_line('Associative Arrary Key:Hello105:'||ename_table('Hello105').salary);
+ 15  end;
+ 16  /
+Hello100
+Hello101
+Hello102
+Hello103
+Hello104
+Hello105
+Hello106
+Hello107
+Hello108
+Hello109
+Hello110
+Associative Arrary Key:Hello105:4800
+
+已順利完成 PL/SQL 程序.
+
+SQL> DECLARE
+  2   TYPE emp_type IS RECORD
+  3    (last_name employees.last_name%TYPE,salary employees.salary%TYPE,job_id employees.job_id%TYPE);
+  4   TYPE emp_tab_type IS TABLE OF emp_type INDEX BY pls_integer;
+  5   tab_emp emp_tab_type;
+  6   rec_emp emp_type;
+  7  BEGIN
+  8   FOR i IN 100..110 LOOP
+  9    SELECT last_name,salary,job_id
+ 10      INTO rec_emp
+ 11     FROM employees
+ 12     WHERE employee_id=i;
+ 13     tab_emp(i) := rec_emp;
+ 14   END LOOP;
+ 15   dbms_output.put_line(tab_emp.COUNT);
+ 16   FOR i IN tab_emp.FIRST .. tab_emp.LAST LOOP
+ 17    dbms_output.put_line(tab_emp(i).last_name||':'||tab_emp(i).salary||':'||tab_emp(i).job_id);
+ 18   END LOOP;
+ 19  END;
+ 20  /
+ 
+11
+King:24000:AD_PRES
+Kochhar:17000:AD_VP
+De Haan:17000:AD_VP
+Hunold:9000:IT_PROG
+Ernst:6000:IT_PROG
+Austin:4800:IT_PROG
+Pataballa:4800:IT_PROG
+Lorentz:4200:IT_PROG
+Greenberg:12008:FI_MGR
+Faviet:9000:FI_ACCOUNT
+Chen:8200:FI_ACCOUNT
+
+已順利完成 PL/SQL 程序.
+
+SQL> DECLARE
+  2   TYPE emp_type IS RECORD
+  3    (last_name employees.last_name%TYPE,salary employees.salary%TYPE,job_id employees.job_id%TYPE);
+  4   TYPE emp_tab_type IS TABLE OF emp_type INDEX BY pls_integer;
+  5   tab_emp emp_tab_type;
+  6   rec_emp emp_type;
+  7  BEGIN
+  8   SELECT last_name,salary,job_id
+  9     BULK COLLECT INTO tab_emp
+ 10    FROM employees
+ 11    WHERE employee_id BETWEEN 100 AND 110;
+ 12   dbms_output.put_line(tab_emp.COUNT);
+ 13   FOR i IN tab_emp.FIRST .. tab_emp.LAST LOOP
+ 14    dbms_output.put_line(tab_emp(i).last_name||':'||tab_emp(i).salary||':'||tab_emp(i).job_id);
+ 15   END LOOP;
+ 16  END;
+ 17  /
+11
+King:24000:AD_PRES
+Kochhar:17000:AD_VP
+De Haan:17000:AD_VP
+Hunold:9000:IT_PROG
+Ernst:6000:IT_PROG
+Austin:4800:IT_PROG
+Pataballa:4800:IT_PROG
+Lorentz:4200:IT_PROG
+Greenberg:12008:FI_MGR
+Faviet:9000:FI_ACCOUNT
+Chen:8200:FI_ACCOUNT
+
+已順利完成 PL/SQL 程序.

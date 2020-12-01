@@ -1,0 +1,476 @@
+C:\>sqlplus hr/hr
+
+PL/SQL僅提供程序功能(條件判斷與迴圈等),不能直接操作資料庫(QUERY/DML/DDL/DCL/TCL)的內容
+SQL指令才能操作資料庫
+DML->SELECT/INSERT/UPDATE/DELETE/MERGE --除SELECT外,其他DML指令一定會被包含在一個交易裡(Transaction).
+--交易必須人為結束(COMMIT/ROLLBACK),與PL/SQL程式碼的結束與否無關.
+DDL->CREATE/ALTER/DROP/TRUNCATE
+DCL->GRANT/REVOKE
+TCL->COMMIT/ROLLBACK/SAVEPOINT
+
+一個session同時間最多只能有一個transaction存在.不論是由SQLPLUS所執行的SQL或PLSQL Block的SQL,只要是同一個session都在相同的transaction裡.
+
+任何的SQL Statement在PL/SQL被執行時,都必須先宣告一個Cursor,但可以為Implicit(隱式)/Explicit(顯式)
+Implicit Cursor用在SELECT僅會回傳1筆row,且一定要回傳1筆row.DML也可以使用此種cursor,但DML指令不受限於所操作的資料筆數必須為1筆的限制.
+當SELECT Statement可能回傳0/1/多筆row時,則必須事先在宣告區塊宣告Explicit Cursor.
+
+PL/SQL Block可以直接包含DML/TCL,不能直接包含DDL/DCL.但可以使用Dynamic SQL語法包含DDL/DCL,等到執行階段才將該DDL/DCL指令執行.
+但是SELECT指令被使用時,必須加上INTO將SELECT指令的回傳值賦值給PL/SQL變數
+SQL> begin
+  2   create table t1 (a number);  --DDL
+  3  end;
+  4  /
+ create table t1 (a number);
+ *
+ ERROR 在行 2:
+ORA-06550: 第 2 行, 第 2 個欄位:
+PLS-00103: 發現了符號 "CREATE" 當您等待下列事項之一發生時:
+begin case
+declare exit for goto if loop mod null pragma raise return
+select update while with <ID> <外加雙引號的分界 ID>
+<連結變數> << close current delete fetch lock insert open
+rollback savepoint set sql execute commit forall merge pipe
+
+SQL> begin
+  2   execute immediate 'create table t1 (a number)';  --Dynamic SQL(Native),或使用DBMS_SQL
+  3  end;                --------------------------
+  4  /                   --此處撰寫DDL指令
+
+已順利完成 PL/SQL 程序.
+
+--檢視t1是否已經建立
+SQL> desc hr.t1
+ 名稱                                      空值?    類型
+ ----------------------------------------- -------- ----------------------------
+ A                                                  NUMBER
+
+--請注意,執行DDL/DCL將會自動確認目前進行中的DML交易 
+ 
+SQL> declare
+ 2   v_salary hr.emp.salary%type;
+ 3  begin
+ 4   select salary from hr.emp where employee_id=100;
+ 5  end;
+ 6  /
+ select salary from hr.emp where employee_id=100;
+ *
+ ERROR 在行 4:
+ORA-06550: 第 4 行, 第 2 個欄位:   --在PARSE階段出現錯誤
+PLS-00428: 在此 SELECT 敘述句中預期會出現一個 INTO 子句  --因為SELECT指令將回傳某些資料給user process
+
+SELECT column_name1,column_name2,...   --select list
+FROM table_name
+WHERE condition  
+
+
+SQL> declare
+  2   v_salary hr.emp.salary%type;
+  3  begin
+  4   select salary into v_salary from hr.emp where employee_id=100;  
+         --into之後的變數個數與資料型態,必須與select list的欄位個數與資料型態相同
+  5  end;
+  6  /
+
+已順利完成 PL/SQL 程序.
+
+SQL> select salary from hr.emp where department_id=100;
+
+    SALARY
+----------
+     12000
+      9000
+      8200
+      7700
+      7800
+      6900
+
+已選取 6 個資料列.
+
+SQL> declare
+  2   v_salary hr.emp.salary%type;
+  3  begin
+  4   select salary into v_salary from hr.emp where department_id=100;
+      --因為有6筆rows滿足department_id=90的條件,所以將一次回傳這些rows的salary欄位值給v_salary這個變數
+  5  end;
+  6  /
+declare
+*
+ ERROR 在行 1:  --在EXECUTE階段出現錯誤
+ORA-01422: 精確擷取傳回的列數(row)超過所要求的列數   --->TOO_MANY_ROWS.因為所宣告的cursor為Implicit Cursor
+ORA-06512: 在 line 4                            --解決方法1.修改WHERE條件,只有一筆row滿足條件,所以只會回傳1筆資料
+                                                --解決方法2.使用explicit cursor,讓這些rows不要一次回傳,而是一筆一筆回傳(需要搭配迴圈語法)
+
+SQL> select salary from hr.emp where department_id=300;
+
+沒有任何資料列被選取
+
+SQL> declare
+  2   v_salary hr.emp.salary%type;
+  3  begin
+  4   select salary into v_salary from hr.emp where department_id=300;
+  5  end;
+  6  /
+declare
+*
+ ERROR 在行 1:
+ORA-01403: 找不到資料    -->NO_DATA_FOUND
+ORA-06512: 在 line 4
+
+--在PL/SQL裡使用SELECT指令時,如果沒有使用explicit cursor,則必須確定SELECT回傳的row只有一筆,不能多也不能少.
+
+SQL> declare
+  2   hire_date hr.emp.hire_date%type;
+  3   sysdate hire_date%type;
+  4   employee_id hr.emp.employee_id%type;
+  5  begin
+  6   employee_id := 176;
+  7   select hire_date,sysdate into hire_date,sysdate  --local variable優先於function name
+  8    from hr.emp
+  9    where employee_id=employee_id;   --PL/SQL Engine處理employee_id=employee_id時,將employee_id當做是employee_id欄位名,而不是176
+ 10  end;                               --變數名字盡量不要直接與table/column名字相同.因為PL/SQL Engine優先假設employee_id為欄位名字.
+ 11  /
+declare
+*
+ ERROR 在行 1:
+ORA-01422: 精確擷取傳回的列數超過所要求的列數  --執行階段才發生錯誤(SQL Engine回傳select結果給PL/SQL Engine時)
+ORA-06512: 在 line 7
+
+--當PL/SQL的Static SQL裡有一個可能是變數/欄位/表格名字的辨識子時,優先認定該辨識子為欄位名字->區域變數/形式參數->表格名字
+--在PL/SQL statements裡,一個可能是變數或函數的辨識子,優先認定為變數名字->函數名字
+
+SQL> select sysdate from dual;
+
+SYSDATE
+--------------
+14-1月 -13
+
+declare
+ hire_date hr.emp.hire_date%type;      --變數名為hire_date,與某個表格欄位相同.不建議此用法
+ sysdate hire_date%type;               --變數名為sysdate,資料型態為日期,目前內容為空值.有一個內建函數也叫做sysdate,其回傳資料型態為日期.
+ employee_id hr.emp.employee_id%type;  --變數名為employee_id與hr.emp的其中一個欄位相同名稱
+begin
+ employee_id := 176;                   --此處的employee_id為變數名
+ select hire_date,sysdate into hire_date,sysdate  --sysdate都被當作變數使用
+  from hr.emp
+  where employee_id=176;
+ dbms_output.put_line(hire_date||':'||sysdate);  --此處的sysdate為變數名
+end;
+/
+24-3月 -06:      --此處的sysdate(變數)為空值,因為在宣告後,sysdate(變數)一直都沒有被指配任何值.
+hire_date:sysdate   
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   hire_date hr.emp.hire_date%type;
+  3   sysdate hire_date%type := to_date('2000-JAN-01','YYYY-MON-DD','NLS_DATE_LANGUAGE=american');
+  4   employee_id hr.emp.employee_id%type :=176;
+  5  begin
+  6   select hire_date,sysdate into hire_date,sysdate   --實際執行的SQL為select hire_date,:B1
+  7    from hr.emp
+  8    where employee_id=176;
+  9   dbms_output.put_line(hire_date||':'||sysdate); --此處的sysdate直接參考line 3的sysdate
+ 10  end;
+ 11  /
+24-3月 -98:01-1月 -00
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   hire_date hr.emp.hire_date%type;
+  3   sysdate hire_date%type := to_date('2000-JAN-01','YYYY-MON-DD','NLS_DATE_LANGUAGE=american');
+  4   employee_id hr.emp.employee_id%type :=176;
+  5  begin
+  6   select hire_date,sysdate into hire_date,sysdate
+  7    from hr.emp
+  8    where employee_id=176;
+  9   sysdate := sysdate;  --前面的sysdate是變數,後面的sysdate是函數
+ 10   dbms_output.put_line(hire_date||':'||sysdate); --此處的sysdate直接參考line 9的sysdate(變數)
+ 11  end;
+ 12  /
+24-3月 -98:14-1月 -13
+
+已順利完成 PL/SQL 程序.
+
+
+--最佳解決方案,不要讓變數與欄位/表格/函數/程序等物件相同名字
+declare
+ v_hire_date hr.emp.hire_date%type;
+ v_sysdate v_hire_date%type := to_date('2000-JAN-01','YYYY-MON-DD','NLS_DATE_LANGUAGE=american');
+ v_employee_id hr.emp.employee_id%type :=176;
+begin
+ select hire_date,sysdate into v_hire_date,v_sysdate
+  from hr.emp
+  where employee_id=v_employee_id;
+ dbms_output.put_line(v_hire_date||':'||v_sysdate);
+end;
+/
+24-3月 -06:14-1月 -13
+
+已順利完成 PL/SQL 程序.
+
+SQL> select count(*) from hr.emp;
+
+  COUNT(*)
+----------
+       107
+
+SQL> DECLARE
+  2   last_name VARCHAR2(25) := 'King';
+  3  BEGIN
+  4   DELETE hr.emp WHERE last_name=last_name;  --此時所執行的sql statement為DELETE hr.emp WHERE last_name=last_name;,將所有row刪除
+  5  END;
+  6  /
+
+已順利完成 PL/SQL 程序.
+
+SQL> select count(*) from hr.emp;
+
+  COUNT(*)
+----------
+         0
+
+SQL> ROLLBACK;
+		 
+--在PL/SQL的name conventions
+--column name -> local variable -> formal variable -> table name
+
+SQL> select count(*) from hr.emp;
+
+  COUNT(*)
+----------
+       107
+
+SQL> delete hr.emp where department_id=100;
+
+已刪除 6 個資料列.
+
+SQL> select count(*) from hr.emp;
+
+  COUNT(*)
+----------
+       101
+
+SQL> rollback;
+
+倒回完成.
+
+SQL> commit;
+
+確認完成.
+
+SQL> select count(*) from hr.emp;
+
+  COUNT(*)
+----------
+       107
+
+SQL> begin
+  2   delete hr.emp where department_id=100;
+  3  end;
+  4  /
+
+已順利完成 PL/SQL 程序.
+
+SQL> select count(*) from hr.emp;
+
+  COUNT(*)
+----------
+       101
+
+SQL> rollback;
+
+倒回完成.
+
+SQL> select count(*) from hr.emp;
+
+  COUNT(*)
+----------
+       107
+
+--PL/SQL裡使用DML指令時,還是需要COMMIT/ROLLBACK來確認交易或倒回交易
+A cursor is a pointer to the private memory area allocated by the Oracle Server.
+It is used to handle the result set of a SELECT statement.
+--在PL/SQL裡cursor有兩種
+--IMPLICIT(隱式) Cursor:由Oracle Server自動開啟(OPEN),取得(FETCH),關閉(CLOSE)
+--EXPLICIT(顯示) Curosr:由PL/SQL開發者在Declare區域宣告cursor定義,在Execute區域開啟,取得,關閉Cursor.
+
+--SELECT只回傳一筆row或DML指令時,可以不宣告explicit cursor,使用implicit cursor即可
+--SELECT若回傳超過一筆rows或沒有任何row時,則必須使用explict cursor,不然將出現錯誤訊息ORA-01422/1403.
+
+SQL> update hr.emp set last_name='Frank' where employee_id=100;
+
+已更新 1 個資料列.
+
+SQL> begin
+  2   dbms_output.put_line(SQL%ROWCOUNT);  --在PL/SQL Block的此行之前,最接近的SQL statement(SELECT/DMLs)處理了幾筆rows.
+  3  end;
+  4  /
+
+已順利完成 PL/SQL 程序.
+
+SQL> select last_name from hr.emp where employee_id=100;
+
+LAST_NAME
+------------------------------
+Frank
+
+SQL> rollback;
+
+倒回完成.
+
+SQL> select last_name from hr.emp where employee_id=100;
+
+LAST_NAME
+------------------------------
+King
+
+SQL> begin
+  2   update hr.emp set last_name='Frank' where employee_id=100;
+  3   dbms_output.put_line(SQL%ROWCOUNT);   --SQL%ROWCOUNT顯示line 2的SQL statement所處理的row數
+  4   rollback;
+  5  end;
+  6  /
+1
+
+已順利完成 PL/SQL 程序.
+
+SQL> begin
+  2   delete hr.emp where department_id=100;  --DML,所以Oracle Server將自動建立一個cursor:SQL,開啟/關閉
+  3   dbms_output.put_line(SQL%ROWCOUNT);  --SQL為implict cursor的前綴字
+  4  end;
+  5  /
+6
+
+已順利完成 PL/SQL 程序.
+
+SQL%ISOPEN     --將回傳Ture/False,顯示cursor目前是否還是開啟中.Implicit Cursor當使用SQL%ISOPEN,永遠應該都是回傳False.
+SQL%ROWCOUNT   --顯示cursor到目前為止,已經處理過幾筆資料
+SQL%FOUND      --表示上一次的fetch操作,是否成功.成功將回傳True,失敗將回傳False
+SQL%NOTFOUND   --表示上一次的fetch操作,是否成功.失敗將回傳True,成功將回傳False
+
+
+SQL> rollback;
+
+倒回完成.
+
+SQL> delete hr.emp where department_id=100;
+
+已刪除 6 個資料列.
+
+SQL> delete hr.emp where department_id=70;
+
+已刪除 1 個資料列.
+
+SQL> rollback;
+
+倒回完成.
+
+SQL> begin
+  2   delete hr.emp where department_id=100;  --implicit cursor:SQL建立/開啟/關閉
+  3   delete hr.emp where department_id=70;   --implicit cursor:SQL建立/開啟/關閉
+  4   dbms_output.put_line(SQL%ROWCOUNT);     --此處的SQL為implicit cursor,對應到最近一個implicit cursor
+  5  end;
+  6  /
+1  --line 3的delete操作結果
+
+已順利完成 PL/SQL 程序.
+
+SQL> rollback;
+
+倒回完成.
+
+SQL> declare
+  2   emp_count integer;
+  3  begin
+  4   select count(*) into emp_count from hr.emp;
+  5   dbms_output.put_line(SQL%ROWCOUNT);
+  6  end;
+  7  /
+1  --因為SELECT指令使用implicit cursor時,一定只能回傳一筆資料,而且一定要回傳一筆.
+
+已順利完成 PL/SQL 程序.
+
+PL/SQL Returning
+SQL> DECLARE
+  2   v_salary_before employees.salary%TYPE;
+  3   v_employee_id employees.employee_id%TYPE := 100;
+  4   v_salary_after employees.salary%TYPE;
+  5   v_sql_incr INT := 800;
+  6  BEGIN
+  7   SELECT salary INTO v_salary_before FROM employees WHERE employee_id=v_employee_id;
+  8   UPDATE employees SET salary=salary+800 WHERE employee_id=v_employee_id;
+  9   SELECT salary INTO v_salary_after FROM employees WHERE employee_id=v_employee_id;
+ 10   dbms_output.put_line('Before Update '||v_salary_before);
+ 11   dbms_output.put_line('After Update '||v_salary_after);
+ 12  END;
+ 13  /
+Before Update 24000
+After Update 24800
+
+已順利完成 PL/SQL 程序.
+
+--Update操作
+SQL> DECLARE
+  2   v_salary_before employees.salary%TYPE;
+  3   v_employee_id employees.employee_id%TYPE := 100;
+  4   v_salary_after employees.salary%TYPE;
+  5   v_sql_incr INT := 800;
+  6  BEGIN
+  7   SELECT salary INTO v_salary_before FROM employees WHERE employee_id=v_employee_id;
+  8   UPDATE employees SET salary=salary+800 WHERE employee_id=v_employee_id
+  9    RETURNING salary INTO v_salary_after;                                                
+ 10  -- SELECT salary INTO v_salary_after FROM employees WHERE employee_id=v_employee_id;
+ 11   dbms_output.put_line('Before Update '||v_salary_before);
+ 12   dbms_output.put_line('After Update '||v_salary_after);
+ 13  END;
+ 14  /
+ 
+Before Update 24800
+After Update 25600
+
+已順利完成 PL/SQL 程序.
+
+--Insert操作
+SQL> declare
+  2   v_col2 varchar2(10);
+  3  begin
+  4   insert into t1 values(3,'C')
+  5    returning col2 into v_col2;
+  6   dbms_output.put_line(v_col2);
+  7  end;
+  8  /
+C
+
+已順利完成 PL/SQL 程序.
+
+--Delete操作
+SQL> declare
+  2   v_col2 varchar2(10);
+  3  begin
+  4    delete from t1 where col1=1
+  5    returning col2 into v_col2;
+  6   dbms_output.put_line(v_col2);
+  7  end;
+  8  /
+A
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   v_col2 varchar2(10);
+  3  begin
+  4    delete from t1
+  5    returning col2 into v_col2;
+  6   dbms_output.put_line(v_col2);
+  7  end;
+  8  /
+declare
+*
+ ERROR 在行 1:
+ORA-01422: 精確擷取傳回的列數超過所要求的列數
+ORA-06512: 在 line 4
+
+Implicit Curosr
+- SELECT -> SQL%ROWCOUNT=1, SQL%FOUND=TRUE, SQL%NOTFOUND=FALSE
+- DML    -> SQL%ROWCOUNT=0, SQL%FOUND=FALSE, SQL%NOTFOUND=TRUE
+         -> SQL%ROWCOUNT>0, SQL%FOUND=TRUE, SQL%NOTFOUND=FALSE

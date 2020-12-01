@@ -1,0 +1,1233 @@
+C:\>sqlplus hr/hr
+
+SQL> declare
+  2   v_salary number;
+  3  begin
+  4   select salary into v_salary                           --因為沒有使用explicit cursor,此行只有在SELECT回傳1筆資料時,才能正確執行
+  5     from hr.emp
+  6     where employee_id=200;
+  7   dbms_output.put_line('Employee_id=200:'||v_salary);   --一定會執行
+  8  end;
+  9  /
+Employee_id=200:4400
+
+已順利完成 PL/SQL 程序.
+
+--當某些statements不確定一定要被執行時
+--可以藉由判斷式,決定是否要執行那些statements
+--IF conditions -->可以由多個condition組成,個別condition之間必須使用AND/OR/NOT結合,最終只能出現一個結果(True/False/Null)
+   THEN 
+    statements;  --判斷式的最終結果為True時,則執行THEN到ELSE之間的statements,完成後跳到END IF.
+   ELSE           
+    statements;  --判斷式的最終結果為不是True(False/Null)時,則執行ELSE到END IF之間的statements,完成後跳到END IF.
+  END IF;
+
+最基本的IF Statemnt,IF之後至少要有一個condition,以及THEN END IF之間至少要有一個statement
+IF ...
+ THEN ...
+END IF; 
+  
+SQL> BEGIN
+  2   IF TRUE   --直接寫上boolean值{TRUE,FALSE,NULL},請注意boolean值不需要被單引號括起來
+  3    THEN
+  4     dbms_output.put_line('條件判斷式結果為TRUE');
+  5   END IF;
+  6  END;
+  7  /
+條件判斷式結果為TRUE
+
+已順利完成 PL/SQL 程序.
+
+SQL> BEGIN
+  2   IF 0                          --在pl/sql,0只是一般的數值型態literal
+  3    THEN
+  4     dbms_output.put_line('條件判斷式結果為TRUE');
+  5   END IF;
+  6  END;
+  7  
+ IF 0
+    *
+ ERROR 在行 2:
+ORA-06550: 第 2 行, 第 5 個欄位:
+PLS-00382: 表示式的類型錯誤
+ORA-06550: 第 2 行, 第 2 個欄位:
+PL/SQL: Statement ignored
+
+SQL> BEGIN
+  2   IF 0=0   --boolean值可以由comparision expression產生,comparision operator-> =,>,>=,<,<=,<>,BETWEEN .. AND ..
+  3    THEN
+  4     dbms_output.put_line('條件判斷式結果為TRUE');
+  5   END IF;
+  6  END;
+  7  /
+條件判斷式結果為TRUE
+
+已順利完成 PL/SQL 程序.
+
+SQL> BEGIN
+  2   IF a=a   --變數a的值等於變數a的值嗎?
+  3    THEN  
+  4     dbms_output.put_line('條件判斷式結果為TRUE');
+  5   END IF;
+  6  END;
+  7  /
+ IF a=a
+    *
+ ERROR 在行 2:
+ORA-06550: 第 2 行, 第 5 個欄位:
+PLS-00201: 必須宣告識別項 'A'     --因為a沒有被'包括起來,因為plsql compiler認為a應該是一個變數.而BEGIN ...END之間所使用的變數,必須在DECLARE...BEGIN宣告 
+ORA-06550: 第 2 行, 第 2 個欄位:
+PL/SQL: Statement ignored
+
+SQL> BEGIN
+  2   IF 'a'='a'   --某個文字型態的literal是否等於另一個文字型態的literal?
+  3    THEN
+  4     dbms_output.put_line('條件判斷式結果為TRUE');
+  5   END IF;
+  6  END;
+  7  /
+條件判斷式結果為TRUE
+
+已順利完成 PL/SQL 程序.
+
+SQL> SELECT systimestamp FROM dual;
+
+SYSTIMESTAMP
+---------------------------------------------------------------------------
+10-3月 -15 09.43.26.889000 上午 +08:00
+
+SQL> BEGIN
+  2   IF systimestamp=systimestamp                     --systimestamp是一個函數
+  3    THEN
+  4     dbms_output.put_line('條件判斷式結果為TRUE');
+  5   END IF;
+  6  END;
+  7  /
+條件判斷式結果為TRUE
+
+已順利完成 PL/SQL 程序.
+
+SQL> BEGIN
+  2   IF FALSE
+  3    THEN
+  4     dbms_output.put_line('條件判斷式結果為TRUE');
+  5    ELSE
+  6     dbms_output.put_line('條件判斷式結果為非TRUE');
+  7   END IF;
+  8  END;
+  9  /
+條件判斷式結果為非TRUE
+
+已順利完成 PL/SQL 程序.
+
+SQL> BEGIN
+  2   IF NULL
+  3    THEN
+  4     dbms_output.put_line('條件判斷式結果為TRUE');
+  5    ELSE
+  6     dbms_output.put_line('條件判斷式結果為非TRUE');
+  7   END IF;
+  8  END;
+  9  /
+條件判斷式結果為非TRUE
+
+已順利完成 PL/SQL 程序.
+
+SQL> DECLARE
+  2   v1 BOOLEAN := TRUE;  --BOOLEAN VALUE : {TRUE|FALSE|NULL}
+  3  BEGIN
+  4   v1 := (1=NULL);  --運算式(expression)可以產生boolean值
+  5   IF v1
+  6    THEN
+  7     dbms_output.put_line('v1為TRUE');
+  8    ELSE
+  9     IF v1 IS NULL
+ 10      THEN
+ 11       dbms_output.put_line('v1為NULL');
+ 12      ELSE
+ 13       dbms_output.put_line('v1為FALSE');
+ 14     END IF;
+ 15   END IF;
+ 16  END;
+ 17  /
+v1為NULL
+
+已順利完成 PL/SQL 程序.
+
+SQL> DECLARE
+  2   v1 BOOLEAN := TRUE;
+  3  BEGIN
+  4   v1 := (1=NULL);
+  5   IF v1
+  6    THEN
+  7     dbms_output.put_line('v1為TRUE');
+  8    ELSIF v1 IS NULL                      --前一個範例的line 8(ELSE)+line 9(IF)成為ELSIF 
+  9      THEN
+ 10       dbms_output.put_line('v1為NULL');
+ 11      ELSE
+ 12       dbms_output.put_line('v1為FALSE');
+ 13   END IF;
+ 14  END;
+ 15  /
+v1為NULL
+
+已順利完成 PL/SQL 程序.
+  
+--希望只有salary>5000時,才執行DBMS_OUTPUT
+SQL> declare
+  2   v_salary number;
+  3  begin
+  4   select salary into v_salary
+  5     from hr.emp
+  6     where employee_id=200;
+  7   if (v_salary>5000)
+  8    then
+  9     dbms_output.put_line('Employee_id=200:'||v_salary);
+ 10    else
+ 11     null;
+ 12   end if;
+ 13  end;
+ 14  /
+
+已順利完成 PL/SQL 程序.
+
+--注意事項
+--請思考v_salary>5000是否可放在line 6=> where employee_id=200 and salary>5000?
+--可能需要使用Explicit cursor(因為可能沒有任何回傳)
+SQL> declare
+  2   v_salary number;
+  3  begin
+  4   select salary into v_salary
+  5    from hr.emp
+  6    where employee_id=200 and salary>5000;
+  7   if SQL%FOUND
+  8    then
+  9     dbms_output.put_line('Employee_id=200:'||v_salary);
+ 10    else
+ 11     null;
+ 12   end if;
+ 13  end;
+ 14  /
+declare
+*
+ ERROR 在行 1:
+ORA-01403: 找不到資料  --需要使用Explicit Cursor來避免此問題
+ORA-06512: 在 line 4
+
+
+SQL> declare
+  2   v_salary number;
+  3  begin
+  4   select salary into v_salary
+  5    from hr.emp
+  6    where employee_id=100 and salary>5000;  --變更employee_id所對應的值
+  7   if SQL%FOUND
+  8    then
+  9     dbms_output.put_line('Employee_id=100:'||v_salary);
+ 10    else
+ 11     null;
+ 12   end if;
+ 13  end;
+ 14  /
+Employee_id=100:24000
+
+已順利完成 PL/SQL 程序.
+
+SQL> set serveroutput on
+SQL> declare
+  2   my_age number;   --my_age目前是空值
+  3  begin
+  4   if (my_age<11)   --此時condition結果為Null/Unknown.當condition裡其中一個或兩個為空值進行比較時.
+  5    then
+  6     dbms_output.put_line('I am a child');
+  7   end if;
+  8  end;
+  9  /
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   my_age number;
+  3  begin
+  4   if (my_age<11) is null
+  5    then
+  6     dbms_output.put_line('my_age<11其結果為NULL');
+  7   end if;
+  8  end;
+  9 /
+my_age<11其結果為NULL
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   my_age number := 20;
+  3  begin
+  4   if my_age<11  --此時condition結果為False
+  5    then
+  6     dbms_output.put_line('I am a child');
+  7   end if;
+  8  end;
+  9  /
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   my_age number;
+  3  begin
+  4   if my_age<11  --當my_age為空值,此condition結果為NULL
+  5    then
+  6     dbms_output.put_line('I am a child');
+  7    else  --當condition為False/Null都將執行else到end if的程式碼
+  8     dbms_output.put_line('I am not a child?');
+  9   end if;
+ 10  end;
+ 11  /
+I am not a child?
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   my_age number;
+  3  begin
+  4   if (my_age<11)                              --my_age<11進行條件判斷
+  5    then
+  6     dbms_output.put_line('小於11');
+  7    elsif ((my_age<11) is not null)            --my_age<11進行條件判斷
+  8     then
+  9      dbms_output.put_line('大於11');
+ 10     else
+ 11      dbms_output.put_line('my_age是空值');
+ 12   end if;
+ 13  end;
+ 14  /
+my_age是空值
+
+已順利完成 PL/SQL 程序.
+
+--請參考下列兩個PL/SQL Block
+SQL> declare
+  2  -- my_age number := 20;
+  3   my_age number;
+  4   age_compar boolean;                --宣告一個布林變數,用來儲存conditions的結果
+  5  begin
+  6   age_compar := (my_age<11);
+  7   if (age_compar)
+  8    then
+  9     dbms_output.put_line('小於11');
+ 10    elsif (age_compar is not null)    --再判斷到底false還是NULL,也可以改為(not age_compar)
+ 11     then                             --如果age_compar為false,則not age_compar將變成True
+ 12      dbms_output.put_line('大於11'); --但age_compar為Null,則not age_compar還是null
+ 13     else
+ 14      dbms_output.put_line('my_age是空值');
+ 15   end if;
+ 16  end;
+ 17  /
+my_age是空值
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   my_age number := 20;
+  3  -- my_age number;
+  4   age_compar boolean;
+  5  begin
+  6   age_compar := (my_age<11);
+  7   if (age_compar)
+  8    then
+  9     dbms_output.put_line('小於11');
+ 10    elsif (age_compar is not null)
+ 11     then
+ 12      dbms_output.put_line('大於11');
+ 13     else
+ 14      dbms_output.put_line('my_age是空值');
+ 15   end if;
+ 16  end;
+ 17  /
+大於11
+
+已順利完成 PL/SQL 程序.
+===============================================================================================
+SQL> declare
+  2   my_age number := 20;
+  3  begin
+  4   if my_age<11
+  5    then
+  6     dbms_output.put_line('I am a child');
+  7    else
+  8     dbms_output.put_line('I am not a child?');
+  9   end if;
+ 10  end;
+ 11  /
+I am not a child?
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   myage integer := 32;
+  3  begin
+  4   if myage < 11
+  5     then
+  6      dbms_output.put_line('I Am A Child');
+  7   end if;
+  8  end;
+  9  /
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   myage integer := 32;
+  3  begin
+  4   if myage < 11
+  5     then
+  6      dbms_output.put_line('I Am A Child');
+  7     else
+  8      dbms_output.put_Line('I Am Not A Child');
+  9   end if;
+ 10  end;
+ 11  /
+I Am Not A Child
+
+已順利完成 PL/SQL 程序.
+
+--使用多個IF判斷有階層關係的條件式
+SQL> declare
+  2   myage number:=32;
+  3  begin
+  4   if myage<11 then  
+  5    dbms_output.put_line('I am a child');
+  6   end if;
+  7   if myage between 12 and 19 then  
+  8    dbms_output.put_line('I am young');
+  9   end if;
+ 10   if myage between 21 and 29 then
+ 11    dbms_output.put_line('I am in my twenties');
+ 12   end if;
+ 13   if myage between 31 and 39 then
+ 14    dbms_output.put_line('I am always young');
+ 15   end if;
+ 16  end;
+ 17 /
+I am always young
+
+SQL> declare
+  2   myage number:=10;
+  3  begin
+  4   if myage<11 then  --即便myage小於11,但是line 7/10/13的判斷式還是要被執行一次
+  5    dbms_output.put_line('I am a child');
+  6   end if;
+  7   if myage between 12 and 19 then  --大於等於12並且小於等於19=> 12<=myage<=19
+  8    dbms_output.put_line('I am young');
+  9   end if;
+ 10   if myage between 21 and 29 then
+ 11    dbms_output.put_line('I am in my twenties');
+ 12   end if;
+ 13   if myage between 31 and 39 then
+ 14    dbms_output.put_line('I am always young');
+ 15   end if;
+ 16  end;
+ 17 /
+I am a child
+
+
+--以上的寫法,將進行多次判斷,從Line 4/7/10/13都會被執行一次
+
+--將多個條件判斷式有階層關係的IF
+DECLARE
+ v_myage number:=31;
+BEGIN
+ IF v_myage < 11
+  THEN
+   DBMS_OUTPUT.PUT_LINE(' I am a child ');
+  ELSE
+   IF v_myage < 20
+    THEN
+     DBMS_OUTPUT.PUT_LINE(' I am young ');
+    ELSE
+     IF v_myage < 30
+      THEN
+       DBMS_OUTPUT.PUT_LINE(' I am in my twenties');
+      ELSE
+       IF v_myage < 40
+        THEN
+         DBMS_OUTPUT.PUT_LINE(' I am in my thirties');
+        ELSE
+         DBMS_OUTPUT.PUT_LINE(' I am always young ');
+       END IF;
+     END IF;
+   END IF; 
+ END IF;
+END;
+/
+
+--為簡化程式碼
+ ELSE
+  IF conditions
+   THEN
+   ELSE
+  END IF
+END IF
+--可以縮寫為
+ ELSIF conditions
+  THEN
+  ELSE
+END IF
+--不需要為ELSIF加上END IF  
+ 
+SQL> declare
+  2   myage integer := 32;
+  3  begin
+  4   if myage < 11  --如果myage小於11,執行完line 6後,直接跳到line 18
+  5     then
+  6      dbms_output.put_line('I Am A Child');
+  7     elsif myage < 20  --大於等於11並且小於20. 11 <= myage < 20
+  8       then
+  9         dbms_output.put_line('I Am young');
+ 10       elsif myage < 30  --大於等於20並且小於30  .20 <= myage < 30
+ 11         then
+ 12           dbms_output.put_line('I Am in my twenties');
+ 13         elsif myage < 40  --大於等於30並且小於40 .30 <= myage < 40
+ 14           then
+ 15             dbms_output.put_line('I Am in my thirties');
+ 16           else            --大於等於40 . 40 <= myage
+ 17             dbms_output.put_line('I Am always young');
+ 18    end if;
+ 19  end;
+ 20  /
+I Am in my thirties
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   myage integer := &your_age;
+  3  begin
+  4   if myage < 11
+  5     then
+  6      dbms_output.put_line('I Am A Child');
+  7     elsif myage < 20
+  8       then
+  9         dbms_output.put_line('I Am young');
+ 10       elsif myage < 30
+ 11         then
+ 12           dbms_output.put_line('I Am in my twenties');
+ 13         elsif myage < 40
+ 14           then
+ 15             dbms_output.put_line('I Am in my thirties');
+ 16           else
+ 17             dbms_output.put_line('I Am always young');
+ 18    end if;
+ 19  end;
+ 20  /
+輸入 your_age 的值:  42
+舊的    2:  myage integer := &your_age;
+新的    2:  myage integer := 42;
+I Am always young
+
+已順利完成 PL/SQL 程序.
+
+IF (myfirstname='Christopher' AND v_myage <11) => IF ((myfirstname='Christopher') AND (v_myage <11))
+
+--多個if判斷式,每個都要被執行,將導致過多的condition判斷,進而影響效能.
+--多層次的if/elsif,可以減少一些condition判斷,但最壞情況下,還是有可能有過多的判斷式被執行,進而影響效能.
+ --所以撰寫多層次if/elsif statement時,應該將最可能為True的條件寫在最上層,下一層則為第二大可能為True的條件,依此類推.
+--注意CASE Expression與CASE Statements的差異
+
+--CASE Expression如同一個single row function,將回傳一個結果.所以需要一個變數接受CASE Expression的回傳值.
+--同時CASE Expression可以直接用在SQL statement
+SQL> SELECT salary FROM hr.employees WHERE department_id=60;
+
+    SALARY
+----------
+      9000
+      6000
+      4800
+      4800
+      4200
+
+--CASE Expression(約略等於single row function)	  
+                                      自動生成condition
+CASE selector                         -----------------
+ WHEN value1 THEN expression1  --> IF selector = value1 THEN expression1
+ WHEN value2 THEN expression2  --> ELSIF selector = value2 THEN expression2
+ ELSE expression3              -->  ELSE expression3
+END  
+	  
+SQL> SELECT salary,                                        --自動組成condition
+  2         CASE salary WHEN 9000 THEN '好'            -- IF salary = 9000 THEN '好';
+  3                     WHEN 6000 THEN '尚可'          --  ELSIF salary = 6000 THEN '尚可';
+  4                     WHEN 4800 THEN '要加油'        --   ELSIF salary = 4800 THEN '要加油';
+  5                      ELSE '繼續努力'               --    ELSE '繼續努力';
+  6         END 薪資水準                               -- END IF;
+  7  FROM hr.employees
+  8  WHERE department_id=60;
+
+    SALARY 薪資水準
+---------- --------
+      9000 好
+      6000 尚可
+      4800 要加油
+      4800 要加油
+      4200 繼續努力
+	  
+SQL> SELECT salary,
+  2         CASE salary WHEN 9000 THEN '好'
+  3                     WHEN 6000 THEN '尚可'
+  4                     WHEN 4800 THEN '要加油'
+  5                      ELSE '繼續努力'
+  6         END 薪資水準
+  7  FROM hr.employees
+  8  WHERE department_id=90;
+
+    SALARY 薪資水準
+---------- --------
+     24000 繼續努力   --看起來怪怪的
+     17000 繼續努力
+     17000 繼續努力
+	  
+                                           人為撰寫conditions
+CASE                                       -----------
+ WHEN conditions1 THEN expression1  --> IF conditions1 THEN expression1
+ WHEN conditions2 THEN expression2  --> ELSIF conditions2 THEN expression2
+ ELSE expression3                   -->  ELSE expression3
+END 	  
+	  
+SQL> SELECT salary,
+  2   CASE WHEN salary>8500 THEN '好'             -- IF salary > 8500 AND deparmtent_id=60 THEN 
+  3        WHEN salary>5000 THEN '尚可'           --  ELSIF salary > 5000 AND department_id=60
+  4        WHEN salary>4500 THEN '再加油'        --  ELSIF salary <=5000 AND department_id=60 THEN
+  5         ELSE '繼續努力'                       ---  ELSE 
+  6   END 薪資水準                                -- END IF
+  7  FROM hr.employees
+  8  WHERE department_id=60;
+
+    SALARY 薪資水準
+---------- --------
+      9000 好
+      6000 尚可
+      4800 再加油
+      4800 再加油
+      4200 繼續努力
+
+SQL> SELECT salary,
+  2   CASE WHEN salary>8500 THEN '好'
+  3        WHEN salary>5000 THEN '尚可'
+  4        WHEN salary>4500 THEN '再加油'
+  5         ELSE '繼續努力'
+  6   END 薪資水準
+  7  FROM hr.employees
+  8  WHERE department_id=90;
+
+    SALARY 薪資水準
+---------- --------
+     24000 好
+     17000 好
+     17000 好
+	 
+SQL> desc hr.employees
+ 名稱                                      空值?    類型
+ ----------------------------------------- -------- ----------------------------
+ EMPLOYEE_ID                               NOT NULL NUMBER(6)
+ FIRST_NAME                                         VARCHAR2(20)
+ LAST_NAME                                 NOT NULL VARCHAR2(25)
+ EMAIL                                     NOT NULL VARCHAR2(25)
+ PHONE_NUMBER                                       VARCHAR2(20)
+ HIRE_DATE                                 NOT NULL DATE
+ JOB_ID                                    NOT NULL VARCHAR2(10)
+ SALARY                                             NUMBER(8,2)
+ COMMISSION_PCT                                     NUMBER(2,2)
+ MANAGER_ID                                         NUMBER(6)
+ DEPARTMENT_ID                                      NUMBER(4)
+ 
+SQL> SELECT salary,
+  2   CASE
+  3        WHEN last_name='Lorentz' THEN '給太多了'    --在search condition條件下,可以不用相同的條件
+  4        WHEN salary>5000 THEN '尚可'
+  5        WHEN salary<=5000 THEN '再加油'
+  6   END 薪資水準
+  7  FROM hr.employees
+  8  WHERE department_id=60
+  9  /
+
+    SALARY 薪資水準
+---------- --------
+      9000 尚可
+      6000 尚可
+      4800 再加油
+      4800 再加油
+      4200 給太多了
+	  
+CASE EXPRESSION的工作方式如同Single Row Function一樣
+	  
+SQL> declare
+  2   v_grade char(1) := upper('&grade');
+  3   appraisal varchar2(30);
+  4  begin
+  從Line 6到Line 12為CASE Expression,所以Line 5的appraisesal變數將接受Line 6到Line 12這個CASE Expression的回傳值
+  5   appraisal :=   
+  6    CASE v_grade                      --grade=selector
+  7     WHEN 'A' THEN 'Excellent'      --'A'=expression1,codition=> grade='A'
+  8     WHEN 'B' THEN 'Very Good'      -- grade='B'
+  9     WHEN 'C' THEN 'Good'           -- grade='C'
+ 10      ELSE 'No Such Grade'
+ 11    END;  --CASE ... END
+ 12   dbms_output.put_line('Grade : '||v_grade|| ' Appraisal : ' || appraisal);
+ 13  end;
+ 14  /
+輸入 grade 的值:  a
+舊的    2:  grade char(1) := upper('&grade');
+新的    2:  grade char(1) := upper('a');
+Grade : A Appraisal : Excellent
+
+已順利完成 PL/SQL 程序.
+
+--使用IF/ELSIF方式模擬CASE Expression
+SQL> declare
+  2   v_grade char(1) := upper('&grade');
+  3   appraisal varchar2(30);
+  4  begin
+  5   if v_grade='A'
+  6     then
+  7       dbms_output.put_line('Grade : '|| v_grade || ' Appraisal : Excellent');
+  8     elsif v_grade = 'B'
+  9      then
+ 10       dbms_output.put_line('Grade : '|| v_grade || ' Appraisal : Very Good');
+ 11     elsif v_grade='C'
+ 12       then
+ 13        dbms_output.put_line('Grade : '|| v_grade || ' Appraisal : Good');
+ 14       else
+ 15        dbms_output.put_line('No Such Grade');
+ 16  end if;
+ 17 end;
+ 18 /
+輸入 grade 的值:  B
+舊的    2:  v_grade char(1) := upper('&grade');
+新的    2:  v_grade char(1) := upper('B');
+Grade : B Appraisal : Very Good
+
+已順利完成 PL/SQL 程序.
+
+--經過上面IF/ELSIF的模擬,可以看出CASE執行順序是由上而下,所以最上層應該放最有可能為True的條件,以增加執行效率.
+--CASE Expression不一定要有selector
+--可以直接將condition寫在WHEN與THEN之間
+--CASE Expression可以直接寫在SQL Statements裡
+
+SQL> declare
+  2   v_grade char(1) := upper('&grade');
+  3   appraisal varchar2(30);
+  4  begin
+  5   appraisal :=
+  6    CASE                                  --沒有selector,因為使用selector只能為equality comparsion
+  7      WHEN 'A'=v_grade THEN 'Excellent'     --直接在WHEN之後加上condition,稱為searched CASE
+  8      WHEN 'B'=v_grade THEN 'Very Good'
+  9      WHEN 'C'=v_grade THEN 'Good'
+ 10       ELSE 'No Such Grade'
+ 11     END;
+ 12   dbms_output.put_line('Grade : '||grade|| ' Appraisal : ' || appraisal);
+ 13* end;
+SQL> /
+輸入 grade 的值:  C
+Grade : C Appraisal : Good
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   grade char(1) := upper('&grade');
+  3   appraisal varchar2(30);
+  4  begin
+  5   appraisal :=
+  6    CASE                             
+  7      when 'A'=grade then 'Excellent '
+  8      when 'B'=grade then 'Very Good'  --有兩個condition相同時,則越上面的將先被執行判斷
+  9      when 'B'=grade then 'Good'　　　 --同時每個case裡最多只會執行一次THEN之後的操作.執行完成後跳到end.
+ 10       else 'No Such Grade'
+ 11     END;
+ 12   dbms_output.put_line('Grade : '||grade|| ' Appraisal : ' || appraisal);
+ 13* end;
+SQL> /
+輸入 grade 的值:  B
+Grade : B Appraisal : Very Good
+
+已順利完成 PL/SQL 程序.
+
+--CASE Expression可以用在SQL Statements裡
+--但CASE Statement不能,只能用在PL/SQL裡
+SQL> select employee_id,salary,
+  2   CASE
+  3     when salary<=10000 then 'Under Avg'  --如果condition不是equality(=),則可以不使用selector,直接在when撰寫所希望的condition.
+  4     when salary<=20000 then 'Euqal Avg'  --請注意when condition可以為不同欄位所組成
+  5      else 'Over Avg'
+  6   END sal_grade                          --在SQL裡使用CASE Expression時,其結尾為end.而用在PL/SQL時,其結尾為end;
+  7  from hr.emp;
+
+EMPLOYEE_ID     SALARY SAL_GRADE
+----------- ---------- ---------
+        198       2600 Under Avg
+        199       2600 Under Avg  -- salary <= 10000
+        200       4400 Under Avg
+        201      13000 Euqal Avg  --10000 < salary <= 20000
+        202       6000 Under Avg
+        203       6500 Under Avg
+        204      10000 Under Avg
+        205      12000 Euqal Avg
+        206       8300 Under Avg
+        100      24000 Over Avg   --20000 < salary
+        101      17000 Euqal Avg
+        102      17000 Euqal Avg
+
+SQL> select employee_id,salary,
+  2    CASE                                       --IF 
+  3     when salary<=10000 then 'Under Avg'       --  salary<=10000 THEN 'Under Avg'
+  4     when last_name='King' then 'Big Boss'     --ELSIF last_name='King' THEN 'Big Boss'
+  5      else 'Over Avg'                          -- ELSE 'Over Avg'
+  6    END sal_grade                              --END IF
+  7  from hr.emp;
+
+EMPLOYEE_ID     SALARY SAL_GRADE
+----------- ---------- ---------
+        100      24000 Big Boss
+        101      17000 Over Avg
+        102      17000 Over Avg
+        103       9000 Under Avg
+        104       6000 Under Avg
+        105       4800 Under Avg
+        106       4800 Under Avg
+        107       4200 Under Avg
+        108      12008 Over Avg
+        109       9000 Under Avg
+        110       8200 Under Avg
+
+使用CASE Statement模擬CASE Expression
+SQL> declare
+  2   grade char(1) := upper('&grade');
+  3  begin
+  4    CASE
+  5      when 'A'=grade
+  6       then
+  7          dbms_output.put_line('Grade : '||grade|| ' Appraisal : Excellent ');
+  8      when 'B'=grade
+  9       then
+ 10        dbms_output.put_line('Grade : '||grade|| ' Appraisal : Very Good ');
+ 11      when 'C'=grade
+ 12       then
+ 13        dbms_output.put_line('Grade : '||grade|| ' Appraisal : Good ');
+ 14       else
+ 15         dbms_output.put_line('Grade : '||grade|| ' Appraisal : No Such Grade ');
+ 16     END CASE;
+ 17  end;
+ 18  /
+輸入 grade 的值:  A
+舊的    2:  grade char(1) := upper('&grade');
+新的    2:  grade char(1) := upper('A');
+Grade : A Appraisal : Excellent
+
+已順利完成 PL/SQL 程序.
+		
+--以下為CASE Statemenmt的範例,CASE Statement不會回傳結果.
+--CASE Statement的判斷式,一樣是由上往下進行.
+declare
+ myage integer := 42;
+begin 
+ CASE                                           --沒有selector,所以必須自行撰寫condition
+   when myage < 11                              --myage<11為condition
+    then 
+     dbms_output.put_line('MyAGE is '||myage);  --then之後所要被執行的statements之間,要使用;間隔
+     dbms_output.put_line('I Am A Child');
+   when myage < 20
+    then
+     dbms_output.put_line('MyAGE is '||myage);
+     dbms_output.put_line('I Am young');
+   when myage < 30
+    then
+     dbms_output.put_line('MyAGE is '||myage);
+     dbms_output.put_line('I Am in my twenties');
+   when myage < 40
+    then
+     dbms_output.put_line('MyAGE is '||myage);
+     dbms_output.put_line('I Am in my thirties');
+    else                                        --此else被執行時,表示在此之前所有的WHEN條件式結果都是非TRUE
+     dbms_output.put_line('MyAGE is '||myage);
+     dbms_output.put_line('I Am always young');
+  END CASE;               --結尾與CASE Expression有些許不同(CASE...END)
+  dbms_output.put_line('CASE Statements End');
+end;
+/
+
+--CASE Statement只能用在PL/SQL裡,無法在SQL使用
+SQL> declare
+  2   myage integer := 42;
+  3  begin
+  4   case                                              --
+  5     when myage < 11                                 --IF myage<11
+  6      then                                           -- THEN
+  7       dbms_output.put_line('I Am A Child');         --  dbms_output.put_line
+  8     when myage < 20                                 -- ELSIF myage<20
+  9      then                                           --  THEN
+ 10       dbms_output.put_line('I Am young');           --   dbms_output.put_line
+ 11     when myage < 30                                 --  ELSIF myage<30
+ 12      then                                           --   THEN
+ 13       dbms_output.put_line('I Am in my twenties');  --    dbms_output.put_line
+ 14     when myage < 40                                 --   ELSIF myage<40
+ 15      then                                           --    THEN
+ 16       dbms_output.put_line('I Am in my thirties');  --     dbms_output.put_line
+ 17      else                                           --    ELSE 
+ 18       dbms_output.put_line('I Am always young');    --     dbms_output.put_line
+ 19    end case;                                        --END IF;
+ 20  end;
+ 21  /
+I Am always young
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   a CONSTANT number := 20; --a的變數值目前為20,且不能變更其內容
+  3   b CONSTANT number := 10; --b的變數值目前為10,且不能變更其內容
+  4  begin
+  5   if a=b          --此條件式不可能產生TRUE.
+  6    then
+  7     dbms_output.put_Line('A=B');  ---永遠不會被執行,請注意.
+  8    else
+  9     dbms_output.put_line('A<>B');
+ 10    end if;
+ 11   end;
+ 12  /
+A<>B
+
+已順利完成 PL/SQL 程序.
+
+--注意事項
+--當判斷式由多個conditions組成時,conditions之間必須使用AND/OR/NOT結合,順序由左向右.直到最後只有一個Boolean值出現.
+--example 1.  IF (condition1 AND condition2) THEN ....
+ --因為使用AND結合,所以condition1應該為最可能為False/Null的判斷式
+ 
+--example 2.  IF (condition1 OR condition2) THEN ....
+ --因為使用OR結合,所以condition1應該為最可能為Ture的判斷式
+
+迴圈的用途->重複地執行一些statements
+Basic Loop -> 至少進入Loop一次,離開loop必須自行設定(EXIT)離去條件.
+While Loop -> 不知道要進入Loop幾次,必須由某個判斷式決定,當判斷式結果為true時,則進入Loop.
+              進入Loop後,執行Loop裡的statements,當遇到end loop後,跳回while loop的開始,重新進行判斷.
+              如果判斷式結果不是True,則跳到end loop的下一行.
+FOR Loop -> 已知進入Loop次數
+
+--撰寫Loop statements時,必須先確定不會導致無窮迴圈.也就是先確認exit condition.
+--Basic Loop必須自行使用EXIT這個關鍵字來跳出迴圈
+SQL> declare
+  2    counter pls_integer ;  --counter初始值為空值
+  3  begin
+  4   LOOP  --Basic Loop開始
+  5    dbms_output.put_line(Counter);
+  6    counter := counter + 1;    <==counter永遠是null,雖然先進行counter+1操作,但counter為空值,所以counter+1還是空值.所以又將空值指派給counter.
+  7    EXIT WHEN counter=10;      <==counter永遠不等於10,可以直接使用exit或exit when condition(當condition為True時,才執行exit)
+  8   END LOOP; --遇到end loop將跳回loop開始(line 4)
+  9  end;
+ 10  /
+進入無窮迴圈
+
+SQL> declare
+  2   counter pls_integer := 1;
+  3  begin
+  4   LOOP               --basic loop開始
+  5    dbms_output.put_line(counter);
+  6    counter := counter + 1;
+  7    EXIT;             --exit將導致現有迴圈結束,程式跳到end loop的下一行執行.
+  8   END LOOP;          --basic loop結束
+  9   dbms_output.put_line('迴圈之外');
+ 10  end;
+ 11  /
+1
+迴圈之外
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   counter integer := 1;
+  3  begin
+  4   LOOP
+  5    dbms_output.put_line(counter);
+  6    counter := counter + 1;
+  7    EXIT WHEN counter=10;   
+  --當exit when condition出現時,只有當condition為TRUE時,exit才會發生效果.接著跳到end loop的下一行開始執行
+  8   END LOOP; --跳回line 4重新開始.
+  9   dbms_output.put_line('迴圈之外');
+ 10  end;
+ 11  /
+1
+2
+3
+4
+5
+6
+7
+8
+9
+迴圈之外
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   counter integer := 1;
+  3  begin
+  4   WHILE counter<=10 LOOP     --進入迴圈的條件為counter<=10為TRUE,若為False則跳到end loop的下一行.
+  5    dbms_output.put_line(counter);   --遇到exit時,還是會跳出Loop
+  6    counter := counter + 1;
+       --若在while loop發現EXIT,此時也會跳出loop,執行end loop的下一行.
+  7   END LOOP;  --跳到While重新執行判斷式一次(line 4),如果loop裡statements被執行10次,則line 4的判斷式其實被執行11次
+  8   dbms_output.put_line('迴圈之外');
+  9  end;
+ 10  /
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+迴圈之外
+
+已順利完成 PL/SQL 程序.
+
+
+SQL> begin
+ --counter這個變數不需要事先宣告,counter由1開始,每次執行一次Loop,counter將被遞增加1.直到10為止,跳出FOR LOOP
+               --lower..upper
+  2   FOR counter IN 1..10 LOOP      -- IF 1<=10 THEN LOOP; 1+1, IF 2<=10 THEN LOOP;2+1,... IF 10<=10 THEN LOOP;10+1>maxl;END LOOP;
+  3    dbms_output.put_line(counter);
+  4   END LOOP;
+  5  end;
+  6  /
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+
+已順利完成 PL/SQL 程序.
+
+
+SQL> begin
+  2   FOR counter IN REVERSE 1..10 LOOP  --reverse將讓counter由10開始,每執行一次LOOP,counter將遞減減1,直到1為止跳出FOR LOOP
+  3    dbms_output.put_line(counter);
+  4   END LOOP;
+  5  end;
+  6  /
+10
+9
+8
+7
+6
+5
+4
+3
+2
+1
+
+已順利完成 PL/SQL 程序.
+
+-- for in lower..upper,若lower=upper則此迴圈裡的statements只被執行一次
+SQL> begin
+  2   for counter in 10..10 loop
+  3    dbms_output.put_line(counter);
+  4   end loop;
+  5  end;
+  6  /
+10
+
+已順利完成 PL/SQL 程序.
+
+--如果lower>upper,則迴圈裡的statements一次也不會被執行
+SQL> begin
+  2   for counter in 10..1 loop    --IN lower..upper LOOP,不論是遞增或遞減都是如此.
+  3    dbms_output.put_line(counter);  --exit還是將導致離開迴圈
+  4   end loop;
+  5  end;
+  6  /
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   counter integer := 5;
+  3  begin
+  4   for counter in 1..10 loop
+  5    dbms_output.put_line(counter);  --這個counter到底為哪個line 2或line 4
+  6    EXIT;
+  7   end loop;
+  8  end;
+  8   dbms_output.put_line(counter);
+  9 end;
+ 10 /
+1    --結果顯示line 5所使用的counter為line 4所自動宣告的counter變數
+5    
+
+SQL> declare
+  2   counter integer := 5;
+  3  begin
+  4   for counter in 1..10 loop
+  5    dbms_output.put_line(counter);
+  6    counter := counter + 1;  --在for loop的counter是僅供參考使用,不能被賦值.
+  7   end loop;
+  8   dbms_output.put_line(counter);
+  9  end;
+ 10 /
+  counter := counter + 1;
+  *
+ ERROR 在行 6:
+ORA-06550: 第 6 行, 第 3 個欄位:
+PLS-00363: 表示式 'COUNTER' 無法作為指定目標使用
+ORA-06550: 第 6 行, 第 3 個欄位:
+PL/SQL: Statement ignored
+
+SQL> declare
+  2   i integer := 1;
+  3   j integer := 1;
+  4  begin
+  5   loop
+  6    dbms_output.put(i||':');
+  7    i := i + 1;
+  8    loop
+  9     dbms_output.put(j);
+ 10     j := j + 1;
+ 11     EXIT when j>5;   --跳出line 8到line 12的迴圈.執行line 13
+ 12    end loop;
+ 13    dbms_output.put_line(null);
+ 14    j := 1;
+ 15    EXIT when i>10;  --跳出line 5到line 16的迴圈.執行line 17
+ 16   end loop;
+ 17  end;
+ 18 /
+1:12345
+2:12345
+3:12345
+4:12345
+5:12345
+6:12345
+7:12345
+8:12345
+9:12345
+10:12345
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   i integer := 1;
+  3   j integer := 1;
+  4  begin
+  5   loop
+  6    dbms_output.put(i||':');
+  7    i := i + 1;
+  8    loop
+  9     dbms_output.put(j);
+ 10     j := j + 1;
+ 11     EXIT when mod(i,2)=0;   --此處所跳脫的迴圈為line 8到line 13的迴圈
+ 12     EXIT when j>5;
+ 13    end loop;
+ 14    dbms_output.put_line(null);
+ 15    j := 1;
+ 16    exit when i>10;
+ 17   end loop;
+ 18  end;
+ 19 /
+1:1
+2:12345
+3:1
+4:12345
+5:1
+6:12345
+7:1
+8:12345
+9:1
+10:12345
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   i integer := 1;
+  3   j integer := 1;
+  4  begin
+  5  <<OUTERLOOP>>
+  6   LOOP
+  7    dbms_output.put(i||':');
+  8    i := i + 1;
+  9    <<INNERLOOP>>
+ 10    loop
+ 11     dbms_output.put(j);
+ 12     j := j + 1;
+ 13     EXIT OUTERLOOP WHEN mod(i,2)=0;  --跳到line 19後的下一行(line 20)
+ 14     exit innerloop when j>5;         --跳到line 15後的下一行(line 16)
+ 15    end loop innerloop;
+ 16    dbms_output.put_line(null);
+ 17    j := 1;
+ 18    exit outerloop when i>10;
+ 19   END LOOP OUTERLOOP;
+ 20   dbms_output.put_line(null);
+ 21  end;
+ 22 /
+1:1
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   i integer := 1;
+  3  begin
+  4   loop
+  5    dbms_output.put_line('Inside Loop : i='||i);
+  6    i := i + 1;
+  7    if i < 5 then  --也可以將line 7-9改為CONTINUE WHEN i<5;
+  8      CONTINUE;    --continue指令將跳到line 4(loop),略過continue到end loop之間statements不被執行.
+  9    end if;
+ 10    dbms_output.put_line('Inside Loop After CONTINUE : i='||i);
+ 11    exit when i=10;
+ 12   end loop;
+ 13  end;
+ 14 /
+ 
+Inside Loop : i=1
+Inside Loop : i=2
+Inside Loop : i=3
+Inside Loop : i=4
+Inside Loop After CONTINUE : i=5
+Inside Loop : i=5
+Inside Loop After CONTINUE : i=6
+Inside Loop : i=6
+Inside Loop After CONTINUE : i=7
+Inside Loop : i=7
+Inside Loop After CONTINUE : i=8
+Inside Loop : i=8
+Inside Loop After CONTINUE : i=9
+Inside Loop : i=9
+Inside Loop After CONTINUE : i=10
+
+已順利完成 PL/SQL 程序.
+
+SQL> DECLARE
+  2   v_total NUMBER := 0;
+  3  BEGIN
+  4   <<BeforeTopLoop>>
+  5   FOR i IN 1..10 LOOP
+  6    v_total := v_total + 1;
+  7    dbms_output.put_line('Total is: ' || v_total);
+  8    FOR j IN 1..10 LOOP
+  9     CONTINUE BeforeTopLoop WHEN i + j > 5;
+ 10     v_total := v_total + 1;
+ 11    END LOOP;
+ 12   END LOOP;
+ 13  END two_loop;
+ 14  /
+Total is: 1
+Total is: 6
+Total is: 10
+Total is: 13
+Total is: 15
+Total is: 16
+Total is: 17
+Total is: 18
+Total is: 19
+Total is: 20
+
+已順利完成 PL/SQL 程序.

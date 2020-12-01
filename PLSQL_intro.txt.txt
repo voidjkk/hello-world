@@ -1,0 +1,393 @@
+--線上練習環境
+https://livesql.oracle.com
+
+PL/SQL -> Procedural Language Extension to SQL.
+但請盡量使用SQL完成所要進行的操作,除非SQL無法做到,才使用PL/SQL.
+請注意,存取/操作資料庫,只能透過SQL指令
+
+Oracle -> PL/SQL
+MSSQL -> Transact-SQL
+DBS2 -> SQLPL
+MySQL -> SQL/PSM
+
+
+SELECT指令的基本執行順序
+FROM->WHERE->SELECT
+
+SQL(What) -> Optimizer -> Execution Plan(How)
+
+SQL執行過程: Parse -> Execute -> Fetch(SELECT ONLY)
+
+C:\> sqlplus hr/hr
+--找出薪水比Abel高的員工
+SQL> SELECT salary FROM hr.employees WHERE last_name='Abel';  --因為登入者為hr,所以FROM employees等同FROM hr.employees
+
+    SALARY
+----------
+     11000
+
+SQL> SELECT last_name,salary FROM hr.employees WHERE salary>11000;
+
+LAST_NAME                     SALARY
+------------------------- ----------
+King                           24000
+Kochhar                        17000
+De Haan                        17000
+Greenberg                      12008
+Russell                        14000
+Partners                       13500
+Errazuriz                      12000
+Ozer                           11500
+Hartstein                      13000
+Higgins                        12008
+
+已選取 10 個資料列.
+
+SQL> set serveroutput on
+SQL> DECLARE
+  2   v_salary NUMBER(8,2);
+  3  BEGIN
+  4   SELECT salary INTO v_salary FROM hr.employees WHERE last_name='Abel';
+  5   FOR emp_rec IN (SELECT last_name,salary FROM hr.employees WHERE salary>v_salary) LOOP
+  6    dbms_output.put_line(emp_rec.last_name||':'||emp_rec.salary);
+  7   END LOOP;
+  8  END;
+  9  /
+King:24000
+Kochhar:17000
+De Haan:17000
+Greenberg:12008
+Russell:14000
+Partners:13500
+Errazuriz:12000
+Ozer:11500
+Hartstein:13000
+Higgins:12008
+
+已順利完成 PL/SQL 程序.
+
+--難道一定要使用PL/SQL才能在一個操作裡,找出薪水比Abel高的員工?
+SQL> SELECT last_name,salary FROM hr.employees WHERE salary>(SELECT salary FROM hr.employees WHERE last_name='Abel');
+
+LAST_NAME                     SALARY
+------------------------- ----------
+King                           24000
+Kochhar                        17000
+De Haan                        17000
+Greenberg                      12008
+Russell                        14000
+Partners                       13500
+Errazuriz                      12000
+Ozer                           11500
+Hartstein                      13000
+Higgins                        12008
+
+已選取 10 個資料列.
+
+SQL> CREATE TABLE emp AS SELECT * FROM hr.employees;
+
+SQL> SELECT employee_id,salary,job_id 
+  2  FROM emp                   --等同hr.employees
+  3  WHERE department_id=90;
+
+EMPLOYEE_ID     SALARY JOB_ID
+----------- ---------- ----------
+        100      24000 AD_PRES
+        101      17000 AD_VP
+        102      17000 AD_VP
+
+SQL> SELECT employee_id,salary,job_id,
+  2  CASE job_id WHEN 'AD_PRES' THEN salary*1.2 --IF job_id='AD_PRES' THEN salary*1.2;
+  3              WHEN 'AD_VP' THEN salary*0.9   -- ELSIF job_id='AD_VP' THEN salary*0.9;
+  4  END new_salary                             --  ELSE NULL;
+  5  FROM emp                                   --END IF;
+  6  WHERE salary>=13000;
+
+SELECT employee_id,salary,job_id,
+decode(job_id,'AD_PRES',salary*1.2
+             ,'AD_VP'  ,salary*0.9) new_salary
+FROM emp
+WHERE salary>=13000
+  
+EMPLOYEE_ID     SALARY JOB_ID     NEW_SALARY
+----------- ---------- ---------- ----------
+        201      13000 MK_MAN
+        100      24000 AD_PRES         28800
+        101      17000 AD_VP           15300
+        102      17000 AD_VP           15300
+        145      14000 SA_MAN
+        146      13500 SA_MAN
+
+已選取 6 個資料列.
+
+SQL> SELECT employee_id,salary,job_id,
+  2  CASE job_id WHEN 'AD_PRES' THEN salary*1.2  --IF job_id='AD_PRES' THEN salary*1.2;
+  3              WHEN 'AD_VP' THEN salary*0.9    -- ELSIF job_id='AD_VP' THEN salary*0.9;
+  4              ELSE salary                     --  ELSE salary;
+  5  END new_salary                              --END IF;
+  6  FROM emp
+  7  WHERE salary>=13000;
+
+EMPLOYEE_ID     SALARY JOB_ID     NEW_SALARY
+----------- ---------- ---------- ----------
+        201      13000 MK_MAN          13000
+        100      24000 AD_PRES         28800
+        101      17000 AD_VP           15300
+        102      17000 AD_VP           15300
+        145      14000 SA_MAN          14000
+        146      13500 SA_MAN          13500
+
+已選取 6 個資料列
+
+SQL> SELECT case
+  2          when department_id in (80,90,100) then '賺錢部門'
+  3          else '花錢部門'
+  4        end ,avg(salary)
+  5  FROM employees
+  6  GROUP BY case
+  7          when department_id in (80,90,100) then '賺錢部門'
+  8          else '花錢部門'
+  9       end
+ 10  ;
+
+CASEWHEN AVG(SALARY)
+-------- -----------
+賺錢部門   9630.4186
+花錢部門   4332.9375
+
+C:\>sqlplus hr/hr
+
+SQL> begin
+  2   x := 1;
+  3  end;
+  4  /
+ x := 1;
+ *
+ ERROR 在行 2:
+ORA-06550: 第 2 行, 第 2 個欄位:
+PLS-00201: 必須宣告識別項 'X'         --在執行區塊裡用到的變數,必須事先在宣告區塊中宣告
+ORA-06550: 第 2 行, 第 2 個欄位:
+PL/SQL: Statement ignored
+
+Anonymous PL/SQL執行過程: Parse -> Execute  ->忘記
+SQL> declare
+  2   x integer;
+  3  begin
+  4   x := 1;
+  5  end;
+  6  /
+
+已順利完成 PL/SQL 程序.
+
+procedure-> do something
+function-> do something and reture one and only one value
+
+procedure不能被SQL指令呼叫,只能被PL/SQL呼叫 
+正確型態的function可以被SQL或PL/SQL呼叫
+
+trigger是一種特殊形態的procedure,差別在於呼叫方式
+procedure必須被明確地呼叫
+trigger則是當預先設定的事件發生後,自動執行.
+
+Anonymous PL/SQL採用直譯式方式執行,Run-Time Compile Then Execute.
+Procedure/Function/Trigger事先進行編譯,將編譯結果儲存在Data Dictionary.之後被呼叫(使用名字)時,將編譯後的內容載入,然後執行.
+Stored Program執行過程: Load(compiled code) -> Execute
+
+SQL> declare
+  2   x integer;
+  3  begin
+  4   x := 1;
+  5   dbms_output.put_line('The X is '||x);  --dbms_output.put_line將資料放在Database buffer裡
+  6  end;
+  7  /
+
+已順利完成 PL/SQL 程序.
+
+SQL> set serveroutput on  --自動將buffer裡的新資料回傳到client端
+SQL> declare
+  2   x integer;
+  3  begin
+  4   x := 1;
+  5   dbms_output.put_line('The X is '||x);
+  6  end;
+  7  /
+The X is 1
+
+已順利完成 PL/SQL 程序.
+
+SQL> create procedure show_x
+  2  is
+  3   x integer;
+  4  begin
+  5   x := 1;
+  6   dbms_output.put_line('The X is '||x);
+  7  end;
+  8  /
+
+已建立程序.
+
+SQL> execute show_x
+The X is 1
+
+已順利完成 PL/SQL 程序.
+
+SQL> select salary from hr.employees where last_name='King' and department_id=90;
+
+    SALARY
+----------
+     24000
+
+SQL> begin
+  2   select salary from hr.employees where last_name='King' and department_id=90;
+  3  end;
+  4  /
+ select salary from hr.employees where last_name='King' and department_id=90;
+ *
+ ERROR 在行 2:
+ORA-06550: 第 2 行, 第 2 個欄位:
+PLS-00428: 在此 SELECT 敘述句中預期會出現一個 INTO 子句
+
+
+SQL> declare
+  2   x number;
+  3  begin
+  4   select salary into x from hr.employees where last_name='King' and department_id=90;
+  5  end;
+  6  /
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   x number;
+  3  begin
+  4   select salary into x from hr.employees where last_name='King';
+  5  end;
+  6  /
+declare
+*
+ ERROR 在行 1:
+ORA-01422: 精確擷取傳回的列數超過所要求的列數  --變數x同時間只能接受一個回傳值,但此SQL卻一次回傳超過多個值.
+ORA-06512: 在 line 4
+
+SQL> declare
+  2   x number;
+  3  begin
+  4   select salary into x from hr.employees where last_name='Frank';
+  5  end;
+  6  /
+declare
+*
+ ERROR 在行 1:
+ORA-01403: 找不到資料   --當SELECT指令出現在PL/SQL裡時,必須回傳至少一個值.
+ORA-06512: 在 line 4
+
+--show all顯示目前SQLPLUS這個工具的相關設定
+SQL> show all  
+appinfo 是 OFF 且設定為 "SQL*Plus"
+arraysize 15
+autocommit OFF
+autoprint OFF
+autorecovery OFF
+autotrace OFF
+blockterminator "." (hex 2e)
+btitle OFF 且為下一 SELECT 敘述句的前幾個字元
+cmdsep OFF
+colsep " "
+compatibility version NATIVE
+concat "." (hex 2e)
+copycommit 0
+COPYTYPECHECK 為 ON
+define "&" (hex 26)
+describe DEPTH 1 LINENUM OFF INDENT ON
+echo OFF
+editfile "afiedt.buf"
+embedded OFF
+escape OFF
+escchar OFF
+exitcommit ON
+FEEDBACK ON 為 6 或更多的列
+flagger OFF
+flush ON
+heading ON
+headsep "|" (hex 7c)
+instance "local"
+linesize 80
+lno 8
+loboffset 1
+logsource ""
+long 80
+longchunksize 80
+markup HTML OFF HEAD "<style type='text/css'> body {font:10pt Arial,Helvetica,sans-serif; color:black; backgro
+und:White;} p {font:10pt Arial,Helvetica,sans-serif; color:black; background:White;} table,tr,td {font:10pt Ar
+ial,Helvetica,sans-serif; color:Black; background:#f7f7e7; padding:0px 0px 0px 0px; margin:0px 0px 0px 0px;} t
+h {font:bold 10pt Arial,Helvetica,sans-serif; color:#336699; background:#cccc99; padding:0px 0px 0px 0px;} h1
+{font:16pt Arial,Helvetica,Geneva,sans-serif; color:#336699; background-color:White; border-bottom:1px solid #
+cccc99; margin-top:0pt; margin-bottom:0pt; padding:0px 0px 0px 0px;-
+} h2 {font:bold 10pt Arial,Helvetica,Geneva,sans-serif; color:#336699; background-color:White; margin-top:4pt;
+ margin-bottom:0pt;} a {font:9pt Arial,Helvetica,sans-serif; color:#663300; background:#ffffff; margin-top:0pt
+; margin-bottom:0pt; vertical-align:top;}</style><title>SQL*Plus Report</title>" BODY "" TABLE "border='1' wid
+th='90%' align='center' summary='Script output'" SPOOL OFF ENTMAP ON PREFORMAT OFF
+newpage 1
+null ""
+numformat ""
+numwidth 10
+pagesize 14
+PAUSE 為 OFF
+pno 1
+recsep WRAP
+recsepchar " " (hex 20)
+release 1102000100
+repfooter OFF and 是 NULL
+repheader OFF and 是 NULL
+securedcol is OFF
+serveroutput OFF
+shiftinout INVISIBLE
+showmode OFF
+spool OFF
+sqlblanklines OFF
+sqlcase MIXED
+sqlcode 1403
+sqlcontinue "> "
+sqlnumber ON
+sqlpluscompatibility 11.2.0
+sqlprefix "#" (hex 23)
+sqlprompt "SQL> "
+sqlterminator ";" (hex 3b)
+suffix "sql"
+tab ON
+termout ON
+timing OFF
+trimout ON
+trimspool OFF
+ttitle OFF 且為下一 SELECT 敘述句的前幾個字元
+underline "-" (hex 2d)
+USER 為 "HR"
+verify ON
+wrap : 將會換行
+errorlogging is OFF
+
+--顯示SERVEROUTPUT這個屬性的設定值
+SQL> show serveroutput
+serveroutput OFF     --不要從Oracle Server端取得,最近被PL/SQL程式碼所傳遞到Buffer的內容.
+
+SQL> declare
+  2   x number;
+  3  begin
+  4   select salary into x from hr.employees where last_name='King' and department_id=90;
+  5   dbms_output.put_line(x);   --將x的內容傳遞Server端buffer裡
+  6  end;
+  7  /
+
+已順利完成 PL/SQL 程序.
+
+SQL> set serveroutput on  --從Oracle Server端取得,最近被PL/SQL程式碼所傳遞到Buffer的內容.
+SQL> declare
+  2   x number;
+  3  begin
+  4   select salary into x from hr.employees where last_name='King' and department_id=90;
+  5   dbms_output.put_line(x);  --將x的內容傳遞Server端buffer裡
+  6  end;
+  7  /
+24000   --SQLPLUS自動從Server端Buffer裡所取得的資料
+
+已順利完成 PL/SQL 程序.

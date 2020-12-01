@@ -1,0 +1,924 @@
+The lexical units of PL/SQL are its smallest individual components—delimiters, identifiers, literals, and comments.
+ Delimiters
+ Identifiers
+ Literals
+ Comments 
+ Whitespace Characters Between Lexical Units
+
+literal -> 字典定義:字面意義,在PL/SQL Block裡不是關鍵字(Keyword),定義符號(delimiter),辨識子(Identifier:變數/函數/程序/表格/欄位名字),註解(Comment).
+當SQL或PL/SQL裡使用到literal時,文字或日期型態的literal必須使用單引號包括起來.數字型態的literal不需要.
+
+C:\>sqlplus hr/hr
+SQL> DECLARE
+  2   x VARCHAR2(30) := 'Frank';  --此處的Frank為literal,因為是文字型態的literal,所以要被單引號包括起來
+  3   y NUMBER := 10;  --10為數字型態的literal
+  4   z NUMBER := 2E3;  --2E3也是數字,只是採用科學符號表示=>2*10^3=>2000
+  5  BEGIN
+  6   dbms_output.put_line(x||y||z);  --||將兩個文字literal結合為一個,但是y與z都是數字型態,所以發生implicit type conversion(隱式型別轉換)
+    --dbms_output.put_line(x||to_char(y)||to_char(z));  --to_char,to_date,to_number稱做explict type conversion
+  7  END;
+  8  /
+Frank102000
+
+已順利完成 PL/SQL 程序.
+
+SQL> DECLARE
+  2   v1 NUMBER;
+  3   v2 NUMBER;
+  4  BEGIN
+  5   v1 := 10000;
+  6   v2 := 1.0E4;
+  7   IF v1 = v2 --IF (v1 = v2)
+  8    THEN
+  9     dbms_output.put_line('v1等於v2');
+ 10    ELSE
+ 11     dbms_output.put_line('v1不等於v2');
+ 12   END IF;
+ 13  END;
+ 14  /
+v1等於v2
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   x varchar2(30) := 'Frank';
+  3   y number := 10;
+  4   z number := 2E3;  --2*10^3
+  5  begin
+  6   dbms_output.put_line(x||TO_CHAR(y)||TO_CHAR(z));  --to_char為顯式型別轉換(explicit type conversion)
+  7  end;
+  8  /
+Frank102000
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   x varchar2(10) := 10;   --隱式型別轉換(to_char(10))
+  3   y varchar2(10) := '10';
+  4   z number := '10';       --隱式型別轉換(to_number('10'))
+  5  begin
+  6   NULL;
+  7  end;
+  8  /
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   x varchar2(10) := '10';
+  3   y varchar2(10) := '10';
+  4  begin
+  5   dbms_output.put_line(x+y);  -- +必須用在兩個數字型態的變數,所以隱式型別轉換將會發生(TO_NUMBER(x)+TO_NUMBER(y))
+  6   dbms_output.put_line(x||y);
+  7  end;
+  8  /
+20
+1010
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   x varchar2(10) := 'A';
+  3   y varchar2(10) := '10';
+  4  begin
+  5   dbms_output.put_line(x+y);
+  6   dbms_output.put_line(x||y);
+  7  end;
+  8  /
+declare
+*
+ ERROR 在行 1:
+ORA-06502: PL/SQL: 數字或值錯誤: 字元到數字轉換錯誤  --試圖進行TO_NUMBER(x)=> TO_NUMBER('A')但是失敗.
+ORA-06512: 在 line 5  --因為x+y運算式(expression)的+,必須在x與y都是數字的前提下,才能進行相加.
+
+SQL> create or replace procedure demo_implicit_conv1(v_p1 varchar2,v_p2 varchar2)
+  2  is
+  3  begin
+  4   dbms_output.put_line(v_p1+v_p2);
+  5   dbms_output.put_line(v_p1||v_p2);
+  6  end;
+  7  /
+
+已建立程序.
+
+SQL> begin
+  2   demo_implicit_conv1('10','10');
+  3  end;
+  4  /
+20
+1010
+
+已順利完成 PL/SQL 程序.
+
+SQL> begin
+  2   demo_implicit_conv1(10,10);
+  3  end;
+  4  /
+20
+1010
+
+已順利完成 PL/SQL 程序.
+
+SQL> begin
+  2   demo_implicit_conv1('A','10');
+  3  end;
+  4  /
+begin
+*
+ ERROR 在行 1:
+ORA-06502: PL/SQL: 數字或值錯誤: 字元到數字轉換錯誤
+ORA-06512: 在 "HR.DEMO_IMPLICIT_CONV1", line 4
+ORA-06512: 在 line 2
+
+--使用SQL*PLUS特殊功能(顯示可能的執行計畫)
+IMPLICIT TYPE CONVERSION->在 WHERE a=b時,只能自動將文字變成數字,不能自動將數字變成文字
+C:\Users\Admin>sqlplus sys/oracle as sysdba
+SQL> show  user
+USER 為 "SYS"
+
+SQL> @?/sqlplus/admin/plustrce.sql
+---以下為自動產生的相關SQL Statements
+SQL>
+SQL> drop role plustrace;
+drop role plustrace
+          *
+ ERROR 在行 1:
+ORA-01919: 角色 'PLUSTRACE' 不存在
+
+
+SQL> create role plustrace;
+
+已建立角色.
+
+SQL>
+SQL> grant select on v_$sesstat to plustrace;
+
+順利授權.
+
+SQL> grant select on v_$statname to plustrace;
+
+順利授權.
+
+SQL> grant select on v_$mystat to plustrace;
+
+順利授權.
+
+SQL> grant plustrace to dba with admin option;
+
+順利授權.
+
+SQL>
+SQL> set echo off
+-----
+--將所生的特殊角色授予hr
+SQL> grant plustrace to hr;
+
+順利授權.
+
+SQL> connect hr/hr
+SQL> create table hr.t1 as select * from all_objects;
+
+已建立表格.
+
+SQL> desc hr.t1
+ 名稱                                      空值?    類型
+ ----------------------------------------- -------- ----------------------------
+ OWNER                                     NOT NULL VARCHAR2(30)
+ OBJECT_NAME                               NOT NULL VARCHAR2(128)
+ SUBOBJECT_NAME                                     VARCHAR2(30)
+ OBJECT_ID                                 NOT NULL NUMBER               --注意此處
+ DATA_OBJECT_ID                                     NUMBER
+ OBJECT_TYPE                                        VARCHAR2(19)
+ CREATED                                   NOT NULL DATE
+ LAST_DDL_TIME                             NOT NULL DATE
+ TIMESTAMP                                          VARCHAR2(19)
+ STATUS                                             VARCHAR2(7)
+ TEMPORARY                                          VARCHAR2(1)
+ GENERATED                                          VARCHAR2(1)
+ SECONDARY                                          VARCHAR2(1)
+ NAMESPACE                                 NOT NULL NUMBER
+ EDITION_NAME                                       VARCHAR2(30)
+
+SQL> select count(*) from hr.t1;
+
+  COUNT(*)
+----------
+     55664
+	 
+--依照hr.t1結構建立一個新表格hr.t2,但hr.t2並沒有資料,因為沒有任何hr.t1的row滿足1=2的條件
+SQL> create table hr.t2 as select * from hr.t1 where 1=2;
+
+已建立表格.
+
+SQL> select count(*) from hr.t2;
+
+  COUNT(*)
+----------
+        0
+	 
+SQL> desc hr.t2
+ 名稱                                      空值?    類型
+ ----------------------------------------- -------- ----------------------------
+ OWNER                                     NOT NULL VARCHAR2(30)
+ OBJECT_NAME                               NOT NULL VARCHAR2(128)
+ SUBOBJECT_NAME                                     VARCHAR2(30)
+ OBJECT_ID                                 NOT NULL NUMBER           --現在的形態與hr.t1相同
+ DATA_OBJECT_ID                                     NUMBER
+ OBJECT_TYPE                                        VARCHAR2(19)
+ CREATED                                   NOT NULL DATE
+ LAST_DDL_TIME                             NOT NULL DATE
+ TIMESTAMP                                          VARCHAR2(19)
+ STATUS                                             VARCHAR2(7)
+ TEMPORARY                                          VARCHAR2(1)
+ GENERATED                                          VARCHAR2(1)
+ SECONDARY                                          VARCHAR2(1)
+ NAMESPACE                                 NOT NULL NUMBER
+ EDITION_NAME                                       VARCHAR2(30)
+
+SQL> alter table hr.t2 modify(object_id varchar2(10));
+
+已更改表格.
+
+SQL> desc hr.t2
+ 名稱                                      空值?    類型
+ ----------------------------------------- -------- ----------------------------
+ OWNER                                     NOT NULL VARCHAR2(30)
+ OBJECT_NAME                               NOT NULL VARCHAR2(128)
+ SUBOBJECT_NAME                                     VARCHAR2(30)
+ OBJECT_ID                                 NOT NULL VARCHAR2(10)           --此時已經變成文字型態的欄位
+ DATA_OBJECT_ID                                     NUMBER
+ OBJECT_TYPE                                        VARCHAR2(19)
+ CREATED                                   NOT NULL DATE
+ LAST_DDL_TIME                             NOT NULL DATE
+ TIMESTAMP                                          VARCHAR2(19)
+ STATUS                                             VARCHAR2(7)
+ TEMPORARY                                          VARCHAR2(1)
+ GENERATED                                          VARCHAR2(1)
+ SECONDARY                                          VARCHAR2(1)
+ NAMESPACE                                 NOT NULL NUMBER
+ EDITION_NAME                                       VARCHAR2(30)
+
+SQL> insert into hr.t2 select * from hr.t1;
+
+已建立 55659 個資料列.
+
+SQL> commit;
+
+確認完成.
+
+SQL> create index hr.t1_id_idx on hr.t1(object_id);
+
+已建立索引.
+
+SQL> create index hr.t2_id_idx on hr.t2(object_id);
+
+已建立索引.
+
+SQL> SET AUTOTRACE ON  --要求將所執行的SQL statement,顯示其執行結果與執行統計資料,並顯示使用explain plan方式所產生的執行計畫
+--相同SQL statement連續執行2次
+SQL> select 'T1',object_id,object_name from hr.t1 where object_id=23456;  --數字欄位=數字literal
+
+'T  OBJECT_ID OBJECT_NAME
+-- ---------- ------------------------------
+T1      23456 /573224ae_XMethodsAbstract
+
+
+執行計畫
+----------------------------------------------------------
+Plan hash value: 179166023
+
+-----------------------------------------------------------------------------------------
+| Id  | Operation                   | Name      | Rows  | Bytes | Cost (%CPU)| Time     |
+-----------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |           |     1 |    79 |     2   (0)| 00:00:01 |
+|   1 |  TABLE ACCESS BY INDEX ROWID| T1        |     1 |    79 |     2   (0)| 00:00:01 |
+|*  2 |   INDEX RANGE SCAN          | T1_ID_IDX |     1 |       |     1   (0)| 00:00:01 |
+-----------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("OBJECT_ID"=23456)
+
+Note
+-----
+   - dynamic sampling used for this statement (level=2)
+
+
+統計資料
+----------------------------------------------------------
+          0  recursive calls
+          0  db block gets
+          4  consistent gets
+          0  physical reads
+          0  redo size
+        695  bytes sent via SQL*Net to client
+        519  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+
+SQL> select 'T1',object_id,object_name from hr.t2 where object_id=23456;   --文字欄位=數字literal
+                               --implict type convert=> TO_NUMBER(object_id)=23456
+                                                     -- object_id='23456'  文字欄位=文字literal,此時將可以使用index進行查詢
+'T OBJECT_ID  OBJECT_NAME
+-- ---------- ------------------------------
+T1 23456      /573224ae_XMethodsAbstract
+
+
+執行計畫
+----------------------------------------------------------
+Plan hash value: 1513984157
+
+--------------------------------------------------------------------------
+| Id  | Operation         | Name | Rows  | Bytes | Cost (%CPU)| Time     |
+--------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |      |    10 |   730 |   240   (1)| 00:00:03 |
+|*  1 |  TABLE ACCESS FULL| T2   |    10 |   730 |   240   (1)| 00:00:03 |
+--------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter(TO_NUMBER("OBJECT_ID")=23456)  --因為自動型別轉換,但是index建立在object_id的欄位值,而不是to_Number(object_id)的結果之上
+
+Note
+-----
+   - dynamic sampling used for this statement (level=2)
+
+
+統計資料
+----------------------------------------------------------
+          0  recursive calls
+          0  db block gets
+        835  consistent gets
+          0  physical reads
+          0  redo size
+        696  bytes sent via SQL*Net to client
+        519  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+
+SQL> select 'T1',object_id,object_name from hr.t1 where object_id='23456';   --數字欄位=文字literal
+
+'T  OBJECT_ID OBJECT_NAME
+-- ---------- ------------------------------
+T1      23456 /573224ae_XMethodsAbstract
+
+
+執行計畫
+----------------------------------------------------------
+Plan hash value: 179166023
+
+-----------------------------------------------------------------------------------------
+| Id  | Operation                   | Name      | Rows  | Bytes | Cost (%CPU)| Time     |
+-----------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |           |     1 |    79 |     2   (0)| 00:00:01 |
+|   1 |  TABLE ACCESS BY INDEX ROWID| T1        |     1 |    79 |     2   (0)| 00:00:01 |
+|*  2 |   INDEX RANGE SCAN          | T1_ID_IDX |     1 |       |     1   (0)| 00:00:01 |
+-----------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("OBJECT_ID"=23456)   --implicit type conversion發生在TO_NUMBER('23456'),不是在object_id之上,所以index還是可以使用
+
+Note
+-----
+   - dynamic sampling used for this statement (level=2)
+
+
+統計資料
+----------------------------------------------------------
+          0  recursive calls
+          0  db block gets
+          4  consistent gets
+          0  physical reads
+          0  redo size
+        695  bytes sent via SQL*Net to client
+        519  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+
+SQL> set autotrace off
+
+comment分成單行與多行
+單行註解由--開始,一直到該行結尾(End Of Line:EOF),不需要宣告註解結束.
+多行註解由/*開始,一直到*/為止,其中不管是否有換行出現.
+
+SQL> declare
+  2   v_last_name varchar2(30);
+  3  begin
+  4   select last_name into v_last_name from hr.emp where employee_id=100;
+  5   dbms_output.put_line(v_last_name);
+  6   v_last_name := upper(v_last_name);   --single row function可以直接使用(不可見字元/n)
+  7   dbms_output.put_line(v_last_name);
+  8  end;
+  9  /
+King
+KING
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   v_last_name varchar2(30);
+  3  begin
+  4   select last_name into v_last_name
+  5    from hr.emp
+  6    where employee_id=100; --單行註解,持續到此行結尾(End Of Line)
+  7   dbms_output.put_line(v_last_name);
+  8  end;
+  9  /
+King
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   v_last_name varchar2(30);
+  3  begin
+  4   select last_name into v_last_name
+  5    from hr.emp
+  6   --單行註解 where employee_id=100;
+  7   dbms_output.put_line(v_last_name);
+  8  end;
+  9  /
+ dbms_output.put_line(v_last_name);
+            *
+ ERROR 在行 7:
+ORA-06550: 第 7 行, 第 13 個欄位:   --因為單行註解將一直持續到此行結束,所以line 5的最尾巴必須加上;
+PL/SQL: ORA-00933: SQL 命令的結束有問題
+ORA-06550: 第 4 行, 第 2 個欄位:
+PL/SQL: SQL Statement ignored
+
+
+SQL> declare
+  2   v_last_name varchar2(30);
+  3  begin
+  4   select last_name into v_last_name
+  5    from hr.emp
+  6   /* 多行註解,
+  7    將註解包括在此區塊裡 */ where employee_id=100;
+  8   dbms_output.put_line(v_last_name);
+  9  end;
+ 10  /
+King
+
+已順利完成 PL/SQL 程序.
+
+SINGLE ROW FUNCTION,每一筆row當作function輸入後,都有一個結果輸出
+SQL> select last_name,UPPER(last_name) from hr.emp where employee_id<=110;
+
+LAST_NAME                 UPPER(LAST_NAME)
+------------------------- -------------------------
+King                      KING
+Kochhar                   KOCHHAR
+De Haan                   DE HAAN
+Hunold                    HUNOLD
+Ernst                     ERNST
+Austin                    AUSTIN
+Pataballa                 PATABALLA
+Lorentz                   LORENTZ
+Greenberg                 GREENBERG
+Faviet                    FAVIET
+Chen                      CHEN
+
+已選取 11 個資料列.
+
+MULITPLE ROW FUNCTION,多筆rows當作function輸入,但只有一個結果輸出
+SQL> select count(*) from hr.emp where employee_id<=110;
+
+  COUNT(*)
+----------
+        11
+
+PL/SQL裡可以直接使用single row function
+SQL> declare
+  2   v1 varchar2(10) := 'abc';
+  3   v2 varchar2(10) := 'def';
+  4  begin
+  5   v1 := upper(v1);
+  6   v2 := upper(v2);
+  7   dbms_output.put_line(v1);
+  8   dbms_output.put_line(v2);
+  9  end;
+ 10  /
+ABC
+DEF
+
+已順利完成 PL/SQL 程序.
+
+group function(multiple row function)不能直接使用在PL/SQL使用,但可以使用在SQL裡,然後將SQL結果傳遞給PL/SQL變數使用=> SELECT SUM(salary) INTO v_sum_salary
+		
+declare
+ v1 number := 100;
+ v2 number := 200;
+ v_sum_salary hr.emp.salary%type;
+begin
+ v_sum_salary := sum(v1);
+end;
+/
+                 *
+ ERROR 在行 6:
+ORA-06550: 第 6 行, 第 18 個欄位:
+PLS-00204: 函數或虛擬直欄 'SUM' 也許僅能用在 SQL 敘述句中
+ORA-06550: 第 6 行, 第 2 個欄位:
+PL/SQL: Statement ignored
+
+
+--group function必須出現在PL/SQL BLOCK的SQL敘述句裡
+SQL> declare
+  2   v_sum_salary hr.emp.salary%type;
+  3  begin
+  4   select sum(salary) into v_sum_salary from hr.emp;  --SUM出現在SQL敘述句裡
+  5  end;
+  6  /
+
+已順利完成 PL/SQL 程序.
+
+--DECODE為Oracle特有函數
+--可以使用ANSI SQL的CASE expression達到相同功能
+SQL> declare
+  2   v1 varchar2(30) := 'KingAAAAAAAAAAAAAAAAAAAAA';
+  3   v2 varchar2(10);
+  4  begin
+  5   v2 := decode(length(v1),7,'=7','<>7');
+  6   dbms_output.put_line(v1||' '||v2);
+  7  end;
+  8  /
+ v2 := decode(length(v1),7,'=7','<>7');
+       *
+ ERROR 在行 5:
+ORA-06550: 第 5 行, 第 8 個欄位:
+PLS-00204: 函數或虛擬直欄 'DECODE' 也許僅能用在 SQL 敘述句中
+ORA-06550: 第 5 行, 第 2 個欄位:
+PL/SQL: Statement ignored
+
+SQL> select last_name,decode(length(last_name),7,'=7','<>7') from hr.emp where employee_id=100;
+--if length(last_name)=7
+--   then return '=7'
+--   else return '<>7'
+
+LAST_NAME                      DEC
+------------------------------ ---
+KingAAAAAAAAAAAAAAAAAAAAAAAAAA <>7
+
+SQL> select last_name,case length(last_name) when 7 then '=7'
+  2                                                 else '<>7'
+  3                   end
+  4  from hr.emp
+  5  where employee_id=100;
+
+LAST_NAME                      CAS
+------------------------------ ---
+KingAAAAAAAAAAAAAAAAAAAAAAAAAA <>7
+
+SQL> select last_name,decode(length(last_name),7,'=7','<>7') from hr.emp where employee_id=193;
+
+LAST_NAME                      DEC
+------------------------------ ---
+Everett                        =7
+
+SQL> declare
+  2   v1 hr.emp.last_name%type;
+  3   v2 varchar2(10);
+  4  begin
+  5   select last_name,decode(length(last_name),7,'=7','<>7') into v1,v2 from hr.emp where employee_id=100;
+  6   dbms_output.put_line(v1||' '||v2);
+  7  end;
+  8  /
+KingAAAAAAAAAAAAAAAAAAAAAAAAAA <>7
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   v1 hr.emp.last_name%type;
+  3   v2 varchar2(10);
+  4  begin
+  5    select last_name,case length(last_name) when 7 then '=7' else '<>7' end into v1,v2
+  6    from hr.emp
+  7    where employee_id=100;
+  8   dbms_output.put_line(v1||' '||v2);
+  9  end;
+ 10  /
+KingAAAAAAAAAAAAAAAAAAAAAAAAAA <>7
+
+已順利完成 PL/SQL 程序.
+
+PL/SQL裡可以使用CASE Expression與CASE Statement
+SQL> declare
+  2   v1 varchar2(30) := 'KingAAAAAAAAAAAAAAAAAAAAA';
+  3   v2 varchar2(10);
+  4  begin
+  5   v2 := case length(v1) when 7 then '=7'     --line5/6的case寫法稱為CASE Expression(類似函數)
+  6                         else '<>7'
+  7         end;
+  8   dbms_output.put_line(v1||' '||v2);
+  9  end;
+ 10  /
+KingAAAAAAAAAAAAAAAAAAAAA <>7
+
+已順利完成 PL/SQL 程序.
+SQL> declare
+  2   v_last_name_length integer;
+  3  begin
+  4   select length(last_name) into v_last_name_length from hr.emp where employee_id=100;
+  5   if v_last_name_length = 7
+  6    then dbms_output.put_line('=7');
+  7    else dbms_output.put_line('<>7');
+  8   end if;
+  9  end;
+ 10  /
+<>7
+
+已順利完成 PL/SQL 程序.
+
+sequence(序列):產生一個unique number
+SQL> declare
+  2   v_seq1 number;
+  3  begin
+  4   select seq1.nextval into v_seq1 from dual;   --11g之前
+  5   dbms_output.put_line(v_seq1);
+  6   v_seq1 := seq1.nextval;                      --11g
+  7   dbms_output.put_line(v_seq1);
+  8  end;
+  9  /
+115
+120
+
+已順利完成 PL/SQL 程序.
+
+SQL> col parameter format a30
+SQL> col value format a40
+SQL> select parameter,value from nls_session_parameters where parameter in ('NLS_DATE_FORMAT','NLS_DATE_LANGUAGE');
+
+PARAMETER                      VALUE
+------------------------------ ----------------------------------------
+NLS_DATE_FORMAT                DD-MON-RR                 --日期的預設格式
+NLS_DATE_LANGUAGE              TRADITIONAL CHINESE       --月份,星期的預設語言
+
+SQL> select sysdate from dual;
+
+SYSDATE
+--------------
+14-1月 -13     --格式為DD-MON-RR
+   MON為一月(因為語言為繁體中文)
+
+
+SQL> declare
+  2   x date := '01-01-99';   --當值行到此行時,將自動使用to_date('01-01-99','nls_date_format')試圖將文字轉換為日期
+  3  begin
+  4   dbms_output.put_line(x);
+  5  end;
+  6  /
+declare
+*
+ ERROR 在行 1:
+ORA-01843: 不是有效的月份
+ORA-06512: 在 line 2
+
+
+
+SQL> declare
+  2   x date := '01-JAN-99';
+  3  begin
+  4   dbms_output.put_line(x);
+  5  end;
+  6  /
+declare
+*
+ ERROR 在行 1:
+ORA-01843: 不是有效的月份
+ORA-06512: 在 line 2
+
+
+
+SQL> declare
+  2   x date := '01-1月-99';
+  3  begin
+  4   dbms_output.put_line(x);
+  5  end;
+  6  /
+01-1月 -99
+
+已順利完成 PL/SQL 程序.
+
+--變更日期格式
+SQL> alter session set nls_date_format='yyyy-mm-dd:hh24:mi:ss';
+
+已更改階段作業.
+
+SQL> select sysdate from dual;
+
+SYSDATE
+-------------------
+2008-08-25:14:17:50
+
+SQL> alter session set nls_date_format='DD-MON-RR';
+
+已更改階段作業.
+
+SQL> select sysdate from dual;
+
+SYSDATE
+--------------
+25-8月 -08
+
+--變更日期語言
+SQL> alter session set nls_date_language=american;
+
+已更改階段作業.
+
+SQL> select sysdate from dual;
+
+SYSDATE
+------------
+25-AUG-08
+
+SQL> exit
+
+C:\>sqlplus hr/hr
+SQL> select sysdate from dual;
+
+SYSDATE
+--------------
+25-8月 -08
+
+SQL> exit
+
+--可以使用環境變數,事先設定相關NLS參數
+C:\>set NLS_DATE_FORMAT=YYYY-MM-DD:HH24:MI:SS
+
+C:\>set NLS_DATE_LANGUAGE=american
+
+C:\>sqlplus hr/hr
+SQL> select sysdate from dual;
+
+SYSDATE
+-------------------
+2008-08-25:14:19:51
+
+
+C:\>sqlplus hr/hr
+SQL> select sysdate from dual;
+
+SYSDATE
+--------------
+25-8月 -08
+
+SQL> declare
+  2   x date := to_date('1999-Jan-01','YYYY-MON-DD');
+  3  begin
+  4   dbms_output.put_line(x);
+  5  end;
+  6  /
+declare
+*
+ ERROR 在行 1:
+ORA-01843: 不是有效的月份
+ORA-06512: 在 line 2
+
+
+--建議方式,不要使用implicit type conversion,而是使用explicit type conversion
+SQL> declare
+  2   x date := to_date('1999-Jan-01','YYYY-MON-DD','NLS_DATE_LANGUAGE=american');
+  3  begin
+  4   dbms_output.put_line(x);
+  5  end;
+  6  /
+01-1月 -99
+
+已順利完成 PL/SQL 程序.
+
+nested block可以出現在BEGIN...EXCEPTION之間(執行區),或EXCEPTION...END之間(例外處理區)
+當各自宣告區都有宣告變數時,nested block可以使用自己或包括它的區塊所宣告的變數.
+但是外部區塊不能使用nested block所宣告的變數.
+
+SQL> declare
+  2   outer_var varchar2(20):='Outer Variable';
+  3  begin
+  4   declare
+  5    inner_var varchar2(20):='Inner Variable';
+  6   begin
+  7    dbms_output.put_line(inner_var);
+  8    dbms_output.put_line(outer_var);   --nested block出現在line 4-9
+  9   end;                                --inner_var已經隨著nested block結束而消滅
+ 10   dbms_output.put_line(inner_var);   
+ 11   dbms_output.put_line(outer_var);
+ 12  end;
+ 13  /
+ dbms_output.put_line(inner_var);
+                      *
+ ERROR 在行 10:
+ORA-06550: 第 10 行, 第 23 個欄位:
+PLS-00201: 必須宣告識別項 'INNER_VAR'
+ORA-06550: 第 10 行, 第 2 個欄位:
+PL/SQL: Statement ignored
+
+--簡而言之,nested block可以使用outer PL/SQL block所宣告的變數.
+--但outer PL/SQL block卻不能使用nested block所宣告的變數.
+
+SQL> declare
+  2   outer_var varchar2(20):='Outer Variable';
+  3  begin
+  4   declare
+  5    inner_var varchar2(20):='Inner Variable';
+  6   begin
+  7    dbms_output.put_line(inner_var);
+  8    dbms_output.put_line(outer_var);
+  9   end;
+ 10   --dbms_output.put_line(inner_var);
+ 11   dbms_output.put_line(outer_var);
+ 12  end;
+ 13  /
+Inner Variable
+Outer Variable
+Outer Variable
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   v1 varchar2(20):='Outer Variable';
+  3  begin
+  4   declare
+  5    v2 varchar2(20):='Inner Variable';
+  6   begin
+  7    dbms_output.put_line(v1);
+  8    dbms_output.put_line(v2);
+  9   end;
+ 10   dbms_output.put_line(v1);
+ 11  end;
+ 12  /
+Outer Variable
+Inner Variable
+Outer Variable
+
+已順利完成 PL/SQL 程序.
+
+SQL> declare
+  2   v1 varchar2(20):='Outer Variable';
+  3  begin
+  4   declare
+  5    v1 varchar2(20):='Inner not Outer';
+  6    v2 varchar2(20):='Inner Variable';
+  7   begin
+  8    dbms_output.put_line(v1);   --當nested block與outer block都有相同變數名字時,優先使用自己所宣告的變數
+  9    dbms_output.put_line(v2);
+ 10   end;
+ 11   dbms_output.put_line(v1);
+ 12  end;
+ 13  /
+Inner not Outer   --line 8
+Inner Variable
+Outer Variable
+
+已順利完成 PL/SQL 程序.
+
+         --label
+SQL> begin <<outer>>
+  2   declare
+  3    v1 varchar2(20):='Outer Variable';
+  4   begin
+  5    declare
+  6     v1 varchar2(20):='Inner not Outer';
+  7     v2 varchar2(20):='Inner Variable';
+  8    begin
+  9     dbms_output.put_line(outer.v1);  --outer.v1的outer是label name
+ 10     dbms_output.put_line(v2);
+ 11    end;
+ 12    dbms_output.put_line(v1);
+ 13   end;
+ 14  end outer;
+ 15  /
+Outer Variable
+Inner Variable
+Outer Variable
+
+已順利完成 PL/SQL 程序.
+
+--關鍵字沒有大小寫區分,沒有換行,沒有內縮.
+--不好看懂與維護,但與執行效率無關.
+SQL> declare v1 number := 1;begin if v1=2 then dbms_output.put_line('v1=2'); else dbms_output.put_line('v1<>2'); end if; end;
+  2  /
+v1<>2
+
+已順利完成 PL/SQL 程序.
+
+--請善加利用內縮
+SQL> DECLARE
+  2   v1 NUMBER := 1;
+  3  BEGIN
+  4   IF v1=2
+  5    THEN
+  6     dbms_output.put_line('v1=2');
+  7    ELSE
+  8     dbms_output.put_line('v1<>2');
+  9   END IF;
+ 10  END;
+ 11  /
+v1<>2
+
+已順利完成 PL/SQL 程序.

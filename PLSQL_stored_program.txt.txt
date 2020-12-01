@@ -1,0 +1,240 @@
+Procedure/Function是被命名的PL/SQL Blocks
+還有建立procedure/function時,就已經編譯完成.將編譯後的machine readable code(ORACLE認為)儲存在data dictionary裡.
+往後只要呼叫該procedure/function,則直接執行machine code即可.(compile once,run many times)
+
+Anonymous PL/SQL每次執行時,都要進行Run-Time Compile,然後才被執行.(Compile Before each run)
+
+Procedure->進行某些操作,但不會回傳值.
+SQL> CREATE PROCEDURE update_sal --此時不能已存在的procedure也叫做update_sal
+     ....
+	 ....
+	 ....
+	 
+SQL> CREATE OR REPLACE PROCEDURE update_sal --如果有已存在的procedure也叫做update_sal,則將其內容置換為此次編譯的結果.
+     ....
+	 ....
+	 ....
+SQL> CREATE OR REPLACE PROCEDURE update_sal(p_empid number)  --Procedure Header(specification),p_empid稱做formal parameter(placeholder佔位符號)
+  2  IS   --宣告區                                           --當此procedure被執行時,actual parameter將取代所有的formal parameter
+  3   v_old_salary number;                                   --同時actul parameter如同常數一般,不能變更其內容.
+  4   v_new_salary number;
+  5  BEGIN  --執行區
+  6   select salary into v_old_salary from hr.emp where employee_id=p_empid for update;
+  7   update hr.emp set salary=salary*1.5 where employee_id=p_empid;
+  8   select salary into v_new_salary from hr.emp where employee_id=p_empid;
+  9   dbms_output.put_line('Old Salary:'||v_old_salary||'<==>'||'New Salary:'||v_new_salary);
+ 10  EXCEPTION --例外處理區
+ 11   WHEN others
+ 12    THEN
+ 13     dbms_output.put_line(SQLERRM);
+ 14  END; 
+ 15 /
+
+已建立程序.
+
+--procedure只能在PL/SQL裡被呼叫.同時必須為獨立的pl/sql statement.
+SQL> begin
+  2   update_sal(100);  --100稱做actual parameter.100將取代所有p_empid的位置.
+  3  end;
+  4  /
+Old Salary:24000<==>New Salary:36000
+
+已順利完成 PL/SQL 程序.
+
+SQL> commit;
+
+確認完成.
+
+SQL> call update_sal(101);
+Old Salary:17000<==>New Salary:25500
+
+已完成呼叫.
+
+SQL> execute update_sal(102);
+Old Salary:17000<==>New Salary:25500
+
+已順利完成 PL/SQL 程序.
+
+SQL> rollback;   --不管透過何種方式進行DML,交易的確認或倒回都必須明確使用commit/rollback.
+
+倒回完成.
+
+--目前的check_sal有一個問題,就是line 5/7分別都對hr.emp進行查詢,得到old/new value.
+--其實可以不需要line 7,只要將line 6的update加上一個子句returning即可取得new value
+SQL> CREATE OR REPLACE PROCEDURE update_sal(p_empid number) IS
+  2   v_old_salary number;
+  3   v_new_salary number;
+  4  BEGIN
+  5   select salary into v_old_salary from hr.emp where employee_id=p_empid for update;
+  6   update hr.emp set salary=salary*1.5 where employee_id=p_empid
+  7    returning salary into v_new_salary;
+  8  -- select salary into v_new_salary from hr.emp where employee_id=p_empid;
+  9   dbms_output.put_line('Old Salary:'||v_old_salary||'<==>'||'New Salary:'||v_new_salary);
+ 10  END;
+ 11  /
+
+已建立程序.
+
+SQL> call update_sal(101);
+Old Salary:17000<==>New Salary:25500
+
+已完成呼叫.
+
+SQL> rollback;
+
+data dictionary view
+DBA_SOURCE --資料庫裡所有的subprograms原始碼
+ALL_SOURCE --此session user所擁有或他人授權可以使用的subprograms原始碼
+SQL> show user
+USER 為 "HR"
+SQL> select distinct name,type from user_source;
+
+NAME                           TYPE
+------------------------------ ------------
+UPDATE_JOB_HISTORY             TRIGGER
+SHOW_X                         PROCEDURE
+SECURE_DML                     PROCEDURE
+CHAR_LEN                       FUNCTION
+UPDATE_SAL                     PROCEDURE
+ADD_JOB_HISTORY                PROCEDURE
+SECURE_EMPLOYEES               TRIGGER
+
+已選取 7 個資料列.
+SQL> desc USER_SOURCE  --此session user所擁有的subprograms原始碼
+ 名稱                                                        空值?    類型
+ ----------------------------------------------------------- -------- ----------------------------------------
+ NAME                                                                 VARCHAR2(30)
+ TYPE                                                                 VARCHAR2(12)
+ LINE                                                                 NUMBER
+ TEXT                                                                 VARCHAR2(4000)
+
+SQL> col text format a100
+
+--請注意儲存在data dictionary裡的文字型態資料皆以大寫方式存在
+SQL> select text from user_source where name='UPDATE_SAL' and type='PROCEDURE' order by line;
+
+TEXT
+----------------------------------------------------------------------------------------------
+procedure update_sal(p_empid number) is
+ v_old_salary number;
+ v_new_salary number;
+begin
+ select salary into v_old_salary from hr.emp where employee_id=p_empid for update;
+ update hr.emp set salary=salary*1.5 where employee_id=p_empid
+  returning salary into v_new_salary;
+-- select salary into v_new_salary from hr.emp where employee_id=p_empid;
+ dbms_output.put_line('Old Salary:'||v_old_salary||'<==>'||'New Salary:'||v_new_salary);
+end;
+
+已選取 10 個資料列.
+
+Funcation->執行某些操作,但必須回傳一個結果
+SQL> create or replace function get_sal(p_empid number)
+  2  is
+  3   v_salary  number;
+  4  begin
+  5   select salary into v_salary from hr.emp where employee_id=p_empid;
+  6  end;
+  7  /
+
+警告: 建立的函數含有編譯錯誤.
+
+SQL> show errors
+FUNCTION GET_SAL 發生錯誤:
+
+LINE/COL ERROR
+-------- -----------------------------------------------------------------
+2/1      PLS-00103: 發現了符號 "IS" 當您等待下列事項之一發生時:
+         return
+
+SQL> create or replace function get_sal(p_empid number) RETURN NUMBER
+  2  is
+  3   v_salary  number;
+  4  begin
+  5   select salary into v_salary from hr.emp where employee_id=p_empid;
+  6  end;
+  7  /
+
+已建立函數.  --function header一定要有RETURN,但執行區塊裡不一定要有RETURN(編譯階段)
+
+SQL> begin
+  2   get_sal(100);
+  3  end;
+  4  /
+ get_sal(100);
+ *
+ ERROR 在行 2:
+ORA-06550: 第 2 行, 第 2 個欄位:
+PLS-00221: 'GET_SAL' 不是程序或未定義    --函數將回傳一個結果,所以需要一個變數接收回傳值.
+ORA-06550: 第 2 行, 第 2 個欄位:
+PL/SQL: Statement ignored
+
+
+SQL> DECLARE
+  2   v_salary number;
+  3  BEGIN
+  4   v_salary := get_sal(100);
+  5  END;
+  6  /
+DECLARE
+*
+ ERROR 在行 1:
+ORA-06503: PL/SQL: 函數沒有傳回任何值  --執行階段產生錯誤
+ORA-06512: 在 "HR.GET_SAL", line 6
+ORA-06512: 在 line 4
+
+--stored function可以在PL/SQL或SQL裡被呼叫.但被SQL呼叫時,此function必須滿足一些規範,即輸入/回傳的資料型態,必須為valid SQL type.
+		 
+SQL> create or replace function get_sal(p_empid number) RETURN NUMBER is
+  2   v_salary  number;
+  3  begin
+  4   select salary into v_salary from hr.emp where employee_id=p_empid;
+  5   RETURN v_salary;
+  6  exception
+  7   when no_data_found then
+  8     RETURN null;
+  9   when too_many_rows then
+ 10     RETURN null;
+ 11  end;
+ 12  /
+
+已建立函數.
+
+SQL> declare
+  2   v_salary number;
+  3  begin
+  4   v_salary := get_sal(100);
+  5   if (v_salary is not null)
+  6     then
+  7       dbms_output.put_line(v_salary);
+  8     else
+  9       dbms_output.put_line('Something wrong');
+ 10   end if;
+ 11  end;
+ 12  /
+67500
+
+已順利完成 PL/SQL 程序.
+
+SQL> select employee_id,get_sal(employee_id) from hr.emp where department_id=100;
+
+EMPLOYEE_ID GET_SAL(EMPLOYEE_ID)
+----------- --------------------
+        108                12000
+        109                 9000
+        110                 8200
+        111                 7700
+        112                 7800
+        113                 6900
+
+已選取 6 個資料列.
+
+SQL> select employee_id,get_sal(employee_id) from hr.emp where department_id=200;
+
+沒有任何資料列被選取
+
+SQL> select employee_id,get_sal(employee_id) from hr.emp where department_id=10;
+
+EMPLOYEE_ID GET_SAL(EMPLOYEE_ID)
+----------- --------------------
+        200                 4400
